@@ -1,0 +1,40 @@
+<div
+  class="absolute top-0 left-0 w-full h-screen bg-white/60 z-50 justify-center items-center hidden"
+  id="customLandmarkDialog"
+>
+  <div
+    class="bg-white border flex flex-col w-[300px] h-[200px] px-4 py-2 rounded-xl justify-between gap-2"
+  >
+    <div class="flex justify-end">
+      <button onclick="customLandmarkDialogClose()">X</button>
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="">Create a Custom landmark</label>
+      <input
+        type="text"
+        id="customLandmarkInput"
+        class="bg-gray-50 border rounded"
+      />
+      <p class="text-xs text-red-500" id="customLandmarkDialogError"></p>
+      <button
+        class="bg-black text-white rounded py-1"
+        onclick="createCustomLandmarkSave()">Save</button
+      >
+    </div>
+    <div class=""></div>
+  </div>
+</div>
+<script>
+  (window as any).createCustomLandmark = () => {
+    const customLevelDialog = document.getElementById("customLandmarkDialog");
+    if (!customLevelDialog) return;
+    customLevelDialog.classList.remove("hidden");
+    customLevelDialog.classList.add("flex");
+  };
+  (window as any).customLandmarkDialogClose = () => {
+    const customLevelDialog = document.getElementById("customLandmarkDialog");
+    if (!customLevelDialog) return;
+    customLevelDialog.classList.remove("flex");
+    customLevelDialog.classList.add("hidden");
+  };
+</script>

@@ -1,0 +1,369 @@
+---
+import FitReport from "@/components/fit-report.astro";
+import Layout from "@/layouts/main.astro";
+---
+
+<style>
+  @media print {
+    @page {
+      size: A4;
+      margin: 1cm;
+    }
+  }
+
+  .upload-zone {
+    border: 2px dashed #d1d5db;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.2s ease;
+  }
+
+  .upload-zone:hover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+  }
+
+  .upload-zone.dragover {
+    border-color: #3b82f6;
+    background-color: #dbeafe;
+  }
+
+  .viewport-container {
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    border-radius: 0.5rem;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+  }
+
+  .action-button {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .action-button:focus {
+    outline: none;
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px #3b82f6;
+  }
+
+  .btn-primary {
+    background-color: #2563eb;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background-color: #1d4ed8;
+  }
+
+  .btn-primary:focus {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px #3b82f6;
+  }
+
+  .btn-secondary {
+    background-color: #4b5563;
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background-color: #374151;
+  }
+
+  .btn-secondary:focus {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px #6b7280;
+  }
+
+  .btn-success {
+    background-color: #16a34a;
+    color: white;
+  }
+
+  .btn-success:hover {
+    background-color: #15803d;
+  }
+
+  .btn-success:focus {
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 4px #22c55e;
+  }
+</style>
+
+<Layout>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 px-6 py-4">
+      <div class="max-w-7xl mx-auto">
+        <h1 class="text-2xl font-bold text-gray-900">Fit Analyzer</h1>
+        <p class="text-gray-600 mt-1">
+          Upload and analyze 3D body models and fit data
+        </p>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-6 py-8">
+      <!-- Upload Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-8 print:hidden">
+        <!-- Body Upload -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2
+              class="text-lg font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <div class="w-3 h-3 bg-blue-500 rounded-full mr-3"></div>
+              Body Model
+            </h2>
+            <div class="mb-4">
+              <input
+                type="file"
+                multiple
+                class="hidden"
+                id="bodyFileInput"
+                onchange="uploadBody(event)"
+              />
+              <button
+                onclick="document.getElementById('bodyFileInput').click()"
+                class="action-button btn-primary text-sm w-full"
+              >
+                Choose Files
+              </button>
+            </div>
+            <div id="bodyViewPort" class="viewport-container h-96 mt-4"></div>
+          </div>
+        </div>
+
+        <!-- Trial 1 Upload -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2
+              class="text-lg font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <div class="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+              Trial 1
+            </h2>
+            <div class="mb-4">
+              <input
+                type="file"
+                multiple
+                class="hidden"
+                id="trial1FileInput"
+                onchange="uploadTrialOne(event)"
+              />
+              <button
+                onclick="document.getElementById('trial1FileInput').click()"
+                class="action-button btn-primary text-sm w-full"
+              >
+                Choose Files
+              </button>
+            </div>
+            <div id="tOneViewPort" class="viewport-container h-96 mt-4"></div>
+          </div>
+        </div>
+
+        <!-- Trial 2 Upload -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2
+              class="text-lg font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <div class="w-3 h-3 bg-purple-500 rounded-full mr-3"></div>
+              Trial 2
+            </h2>
+            <div class="mb-4">
+              <input
+                type="file"
+                multiple
+                class="hidden"
+                id="trial2FileInput"
+                onchange="uploadTrialTwo(event)"
+              />
+              <button
+                onclick="document.getElementById('trial2FileInput').click()"
+                class="action-button btn-primary text-sm w-full"
+              >
+                Choose Files
+              </button>
+            </div>
+            <div id="tTwoViewPort" class="viewport-container h-96 mt-4"></div>
+          </div>
+        </div>
+
+        <!-- Trial 3 Upload -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2
+              class="text-lg font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <div class="w-3 h-3 bg-orange-500 rounded-full mr-3"></div>
+              Trial 3
+            </h2>
+            <div class="mb-4">
+              <input
+                type="file"
+                multiple
+                class="hidden"
+                id="trial3FileInput"
+                onchange="uploadTrialThree(event)"
+              />
+              <button
+                onclick="document.getElementById('trial3FileInput').click()"
+                class="action-button btn-primary text-sm w-full"
+              >
+                Choose Files
+              </button>
+            </div>
+            <div id="tThreeViewPort" class="viewport-container h-96 mt-4"></div>
+          </div>
+        </div>
+
+        <!-- Controls Panel -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2
+              class="text-lg font-semibold text-gray-900 mb-4 flex items-center"
+            >
+              <div class="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
+              Controls
+            </h2>
+
+            <!-- Fit Upload -->
+            <div class="mb-6">
+              <label class="block text-sm font-medium text-gray-700 mb-2"
+                >Fit Data</label
+              >
+              <div class="mb-4">
+                <input
+                  type="file"
+                  class="hidden"
+                  id="fitFileInput"
+                  onchange="uploadFit(event)"
+                />
+                <button
+                  onclick="document.getElementById('fitFileInput').click()"
+                  class="action-button btn-secondary text-sm w-full"
+                >
+                  Choose File
+                </button>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="space-y-3">
+              <button
+                onclick="loadFit()"
+                class="action-button btn-primary w-full"
+              >
+                <svg
+                  class="w-4 h-4 inline mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                  ></path>
+                </svg>
+                Load Fit
+              </button>
+
+              <button
+                onclick="report()"
+                class="action-button btn-success w-full"
+              >
+                <svg
+                  class="w-4 h-4 inline mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  ></path>
+                </svg>
+                Generate Report
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Container -->
+      <div
+        class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 print:hidden"
+        id="chartsContainer"
+      >
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">
+          Analysis Charts
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Charts will be dynamically inserted here -->
+        </div>
+      </div>
+
+      <!-- Report Container -->
+      <div
+        class="bg-white rounded-lg shadow-sm border border-gray-200 print:shadow-none print:border-none"
+        id="reportCon"
+      >
+        <div class="p-6 border-b border-gray-200 print:hidden">
+          <div class="flex justify-between items-center">
+            <h2 class="text-xl font-semibold text-gray-900">
+              Fit Analysis Report
+            </h2>
+            <button onclick="closeBtn()" class="action-button btn-secondary">
+              <svg
+                class="w-4 h-4 inline mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+              Close
+            </button>
+          </div>
+        </div>
+        <div class="p-6">
+          <FitReport />
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script src="../scripts/fit-analyzer/index.ts"></script>
+<script>
+  // Report functionality
+  // (window as any).report = () => {
+  //   const reportCon = document.getElementById("reportCon");
+  //   if (!reportCon) return;
+  //   reportCon.classList.remove("hidden");
+  //   reportCon.scrollIntoView({ behavior: "smooth" });
+  // };
+
+  (window as any).closeBtn = () => {
+    const reportCon = document.getElementById("reportCon");
+    if (!reportCon) return;
+    reportCon.classList.add("hidden");
+  };
+</script>

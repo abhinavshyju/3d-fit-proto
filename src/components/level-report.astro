@@ -1,0 +1,161 @@
+<div class="space-y-8 py-4">
+  <h2 class="text-center text-lg font-medium">
+    FIT REPORT-plane_name level Body-Garment relationship
+  </h2>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div>
+      <div class="mb-4">
+        <div class="text-xs uppercase">BUYER:</div>
+        <div class="text-xs uppercase">STYLE #</div>
+        <div class="text-xs uppercase">DESCRIPTION</div>
+        <div class="text-xs uppercase">FIT:</div>
+        <div class="text-xs uppercase">FABRIC:</div>
+      </div>
+    </div>
+    <div>
+      <div class="text-right text-xs">
+        plane_name: Body-Garment relationship
+      </div>
+      <div class="mt-2 aspect-square">
+        <!-- Replace this with actual chart rendering or image -->
+        <canvas id="scatterChart" class="aspect-square"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse text-xs">
+      <thead>
+        <tr class="border border-gray-300 bg-gray-50">
+          <th class="border border-gray-300 p-1">Level</th>
+          <th class="border border-gray-300 p-1">plane_name</th>
+          <th class="border border-gray-300 p-1">Tolerance %</th>
+          <th class="border border-gray-300 p-1">10</th>
+          <th class="border border-gray-300 p-1"></th>
+          <th class="border border-gray-300 p-1"></th>
+          <th class="border border-gray-300 p-1"></th>
+          <th class="border border-gray-300 p-1"></th>
+          <th class="border border-gray-300 p-1"></th>
+          <th class="border border-gray-300 p-1"></th>
+          <th class="border border-gray-300 p-1"></th>
+          <th class="border border-gray-300 p-1"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border border-gray-300">
+          <td class="border border-gray-300 p-1">Landmark</td>
+          <td class="border border-gray-300 p-1">CF</td>
+          <td class="border border-gray-300 p-1">FLPS</td>
+          <td class="border border-gray-300 p-1">LSS</td>
+          <td class="border border-gray-300 p-1">BLPS</td>
+          <td class="border border-gray-300 p-1">CB</td>
+          <td class="border border-gray-300 p-1">BRPS</td>
+          <td class="border border-gray-300 p-1">RSS</td>
+          <td class="border border-gray-300 p-1">FRPS</td>
+          <td class="border border-gray-300 p-1">Min</td>
+          <td class="border border-gray-300 p-1">Max</td>
+          <td class="border border-gray-300 p-1">Average</td>
+        </tr>
+        <tr class="border border-gray-300">
+          <td class="border border-gray-300 p-1">Required Measure in mm</td>
+          <td class="border border-gray-300 p-1">10</td>
+          <td class="border border-gray-300 p-1">15</td>
+          <td class="border border-gray-300 p-1">25</td>
+          <td class="border border-gray-300 p-1">15</td>
+          <td class="border border-gray-300 p-1">25</td>
+          <td class="border border-gray-300 p-1">15</td>
+          <td class="border border-gray-300 p-1">20</td>
+          <td class="border border-gray-300 p-1">15</td>
+          <td class="border border-gray-300 p-1">10</td>
+          <td class="border border-gray-300 p-1">25</td>
+          <td class="border border-gray-300 p-1">18</td>
+        </tr>
+        <tr class="border border-gray-300">
+          <td class="border border-gray-300 p-1">Fit trial 1</td>
+          <td class="border border-gray-300 p-1">distance_CF</td>
+          <td class="border border-gray-300 p-1">distance_LFPS</td>
+          <td class="border border-gray-300 p-1">distance_LSS</td>
+          <td class="border border-gray-300 p-1">distance_BLPS</td>
+          <td class="border border-gray-300 p-1">distance_CB</td>
+          <td class="border border-gray-300 p-1">distance_BRPS</td>
+          <td class="border border-gray-300 p-1">distance_RSS</td>
+          <td class="border border-gray-300 p-1">distance_FRPS</td>
+          <td class="border border-gray-300 p-1">""</td>
+          <td class="border border-gray-300 p-1">""</td>
+          <td class="border border-gray-300 p-1">""</td>
+        </tr>
+        <tr class="border border-gray-300">
+          <td class="border border-gray-300 p-1">Fit trial 2</td>
+          <td class="border border-gray-300 p-1"></td>
+          <td class="border border-gray-300 p-1">±2.0</td>
+          <td class="border border-gray-300 p-1">17.0</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">16.5</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">17.0</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">16.5</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">16.4</td>
+        </tr>
+        <tr class="border border-gray-300">
+          <td class="border border-gray-300 p-1">Fit trial 3</td>
+          <td class="border border-gray-300 p-1"></td>
+          <td class="border border-gray-300 p-1">±2.0</td>
+          <td class="border border-gray-300 p-1">17.0</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">16.5</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">17.0</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">16.5</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">16.4</td>
+        </tr>
+        <tr class="border border-gray-300">
+          <td class="border border-gray-300 p-1">Average</td>
+          <td class="border border-gray-300 p-1"></td>
+          <td class="border border-gray-300 p-1"></td>
+          <td class="border border-gray-300 p-1">17.0</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">16.5</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">17.0</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">16.5</td>
+          <td class="border border-gray-300 p-1">16.0</td>
+          <td class="border border-gray-300 p-1">16.4</td>
+        </tr>
+        <tr class="border border-gray-300">
+          <td class="border border-gray-300 p-1">Difference</td>
+          <td class="border border-gray-300 p-1"></td>
+          <td class="border border-gray-300 p-1"></td>
+          <td class="border border-gray-300 p-1">-2.0</td>
+          <td class="border border-gray-300 p-1">-2.0</td>
+          <td class="border border-gray-300 p-1">-2.0</td>
+          <td class="border border-gray-300 p-1">-2.0</td>
+          <td class="border border-gray-300 p-1">-2.0</td>
+          <td class="border border-gray-300 p-1">-2.0</td>
+          <td class="border border-gray-300 p-1">-2.0</td>
+          <td class="border border-gray-300 p-1">-2.0</td>
+          <td class="border border-gray-300 p-1">-2.0</td>
+        </tr>
+        <tr class="border border-gray-300">
+          <td class="border border-gray-300 p-1">Result</td>
+          <td class="border border-gray-300 p-1"></td>
+          <td class="border border-gray-300 p-1"></td>
+          <td class="border border-gray-300 bg-green-100 p-1">Pass</td>
+          <td class="border border-gray-300 bg-orange-100 p-1">Fail</td>
+          <td class="border border-gray-300 bg-orange-100 p-1">Fail</td>
+          <td class="border border-gray-300 bg-orange-100 p-1">Fail</td>
+          <td class="border border-gray-300 bg-green-100 p-1">Pass</td>
+          <td class="border border-gray-300 bg-orange-100 p-1">Fail</td>
+          <td class="border border-gray-300 bg-orange-100 p-1">Fail</td>
+          <td class="border border-gray-300 bg-green-100 p-1">Pass</td>
+          <td class="border border-gray-300 bg-orange-100 p-1">Fail</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

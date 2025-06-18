@@ -1,0 +1,460 @@
+---
+import { Download, Printer } from "lucide-react";
+import LevelReport from "./level-report.astro";
+---
+
+<div class="w-full bg-white z-[200] max-w-[794px]">
+  <div class="">
+    <h1
+      class="mb-8 text-center text-3xl font-bold text-gray-800 print:text-2xl"
+    >
+      FIT REPORT
+    </h1>
+
+    <div class="mb-6 flex justify-center gap-4 print:hidden">
+      <button
+        onclick="window.print()"
+        class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        <Printer className="h-4 w-4" />
+        Print Report
+      </button>
+      <button
+        onclick="downloadPDF()"
+        class="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+      >
+        <Download className="h-4 w-4" />
+        Download PDF
+      </button>
+    </div>
+
+    <div class="fit-report-content">
+      <div class="space-y-8 py-4">
+        <!-- Header Information -->
+        <div class="mb-6">
+          <div class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <div class="font-semibold text-gray-700 mb-1">BUYER:</div>
+              <div class="font-semibold text-gray-700 mb-1">STYLE #:</div>
+              <div class="font-semibold text-gray-700 mb-1">DESCRIPTION:</div>
+            </div>
+            <div>
+              <div class="font-semibold text-gray-700 mb-1">FIT:</div>
+              <div class="font-semibold text-gray-700 mb-1">DATE:</div>
+              <div class="font-semibold text-gray-700 mb-1">FABRIC:</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D Model Viewports -->
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8 print:grid-cols-4 gap-2 print:h-[723px]"
+        >
+          <div class="bg-gray-100 p-2">
+            <div class="text-center uppercase font-semibold mb-2 text-gray-700">
+              BODY
+            </div>
+            <div id="rBodyViewPort" class="h-[300px] w-full bg-white rounded">
+            </div>
+          </div>
+          <div class="bg-gray-100 p-2">
+            <div class="text-center uppercase font-semibold mb-2 text-gray-700">
+              Type 1
+            </div>
+            <div id="rTOneViewPort" class="h-[300px] w-full bg-white rounded">
+            </div>
+          </div>
+          <div class="bg-gray-100 p-2">
+            <div class="text-center uppercase font-semibold mb-2 text-gray-700">
+              Type 2
+            </div>
+            <div id="rTTwoViewPort" class="h-[300px] w-full bg-white rounded">
+            </div>
+          </div>
+          <div class="bg-gray-100 p-2">
+            <div class="text-center uppercase font-semibold mb-2 text-gray-700">
+              Type 3
+            </div>
+            <div id="rTThreeViewPort" class="h-[300px] w-full bg-white rounded">
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Report Sections -->
+        <div id="reportSectionContainer" class="space-y-12"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../scripts/fit-analyzer/index.ts"></script>
+<script>
+  import { finalJsonStore } from "@/scripts/storage";
+  import { Chart } from "chart.js";
+  import * as THREE from "three";
+  let loaded = false;
+  (window as any).report = () => {
+    if (loaded) return;
+    const test: {
+      fileName: string;
+      models: Array<{
+        name: string;
+        body: boolean;
+        model: THREE.Object3D<THREE.Object3DEventMap>;
+      }>;
+      value: Array<{
+        levelName: string;
+        bodyIntersectionPoints: THREE.Vector3[];
+        dressIntersectionPoints: THREE.Vector3[];
+        landmarks: Array<{
+          name: string;
+          point: THREE.Vector3;
+          dis: number;
+          value: number;
+          avg: number;
+        }>;
+      }>;
+      bodyLevels: string[];
+      landmarkPoints: string[];
+      criticalMeasurement: Array<{
+        level: string;
+        landmark: string;
+        critical: boolean;
+      }>;
+      trails: Array<{
+        trailname: string;
+        levels: Array<{
+          name: string;
+          bodyIntersectionPoints: THREE.Vector3[];
+          dressIntersectionPoints: THREE.Vector3[];
+          points: Array<{
+            name: string;
+            bodyPoint: THREE.Vector3;
+            dressPoint: THREE.Vector3;
+            distance: number;
+            color: string;
+          }>;
+        }>;
+      }>;
+    } | null = finalJsonStore.get();
+
+    if (test != null) {
+      const reportSectionContainer = document.getElementById(
+        "reportSectionContainer"
+      );
+      if (!reportSectionContainer) return;
+
+      test.bodyLevels.forEach((level, levelIndex) => {
+        const section = document.createElement("div");
+        section.className = "print:break-inside-avoid";
+
+        if (levelIndex > 0) {
+          section.className += " print:break-before-page";
+        }
+
+        const landmarkCount = test.landmarkPoints.length;
+        const landmarkDistances: number[][] = Array.from(
+          { length: landmarkCount },
+          () => []
+        );
+
+        // Build trail rows with proper data handling
+        const trailRows = test.trails
+          .map((trail) => {
+            const levelTrail = trail.levels.find((tl) => tl.name === level);
+            if (
+              !levelTrail ||
+              !levelTrail.points ||
+              levelTrail.points.length === 0
+            )
+              return "";
+
+            const distances = levelTrail.points.map((p) => p.distance * 100);
+            const tAvg =
+              distances.reduce((acc, dist) => acc + dist, 0) / distances.length;
+            const tMin = Math.min(...distances);
+            const tMax = Math.max(...distances);
+
+            const trailCells = levelTrail.points
+              .map((p, i) => {
+                const dist = p.distance * 100;
+                if (i < landmarkDistances.length) {
+                  landmarkDistances[i].push(dist);
+                }
+                return `<td class="border border-gray-300 p-2 text-center">${dist.toFixed(1)}</td>`;
+              })
+              .join("");
+
+            return `
+              <tr class="hover:bg-gray-50">
+                <td class="border border-gray-300 p-2 bg-gray-50">${trail.trailname}</td>
+                ${trailCells}
+                <td class="border border-gray-300 p-2 text-center">${tMin.toFixed(1)}</td>
+                <td class="border border-gray-300 p-2 text-center">${tMax.toFixed(1)}</td>
+                <td class="border border-gray-300 p-2 text-center">${tAvg.toFixed(1)}</td>
+              </tr>
+            `;
+          })
+          .filter((row) => row !== "")
+          .join("");
+
+        const levelData = test.value.find((i) => i.levelName === level);
+        const landmarks = levelData?.landmarks || [];
+
+        let avg = 0,
+          min = 0,
+          max = 0;
+        if (landmarks.length > 0) {
+          avg = landmarks.reduce((a, c) => a + c.value, 0) / landmarks.length;
+          min = Math.min(...landmarks.map((l) => l.value));
+          max = Math.max(...landmarks.map((l) => l.value));
+        }
+
+        // Build required measure row
+        const requiredMeasureCells = landmarks
+          .map(
+            (l) =>
+              `<td class="border border-gray-300 p-2 text-center">${l.value.toFixed(1)}</td>`
+          )
+          .join("");
+
+        // Calculate statistics rows
+        const avgRow = landmarkDistances
+          .map((arr) => {
+            if (arr.length === 0)
+              return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+            const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+            return `<td class="border border-gray-300 p-2 text-center">${avg.toFixed(1)}</td>`;
+          })
+          .join("");
+
+        const minRow = landmarkDistances
+          .map((arr) => {
+            if (arr.length === 0)
+              return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+            const min = Math.min(...arr);
+            return `<td class="border border-gray-300 p-2 text-center">${min.toFixed(1)}</td>`;
+          })
+          .join("");
+
+        const resultRow = landmarkDistances
+          .map((arr) => {
+            if (arr.length === 0)
+              return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+            const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
+            const result = avg <= 20 ? "Pass" : "Fail";
+            const bgColor = result === "Pass" ? "bg-green-100" : "bg-red-100";
+            const textColor =
+              result === "Pass" ? "text-green-800" : "text-red-800";
+            return `<td class="border border-gray-300 ${bgColor} ${textColor} p-2 text-center font-semibold">${result}</td>`;
+          })
+          .join("");
+
+        // Build the section HTML
+        section.innerHTML = `
+          <div class="space-y-6 ">
+            <h2 class="text-center text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 print:text-xl">
+              ${level} Level - Body-Garment Relationship
+            </h2>
+
+            <div class="grid grid-cols-[1fr_400px] gap-6 ">
+              <div class=" p-4">
+                <h3 class="font-semibold text-gray-700 mb-3">Report Details</h3>
+                <div class="space-y-2 text-sm">
+                  <div><span class="font-medium">Level:</span> ${level}</div>
+                  <div><span class="font-medium">Analysis Type:</span> Body-Garment Relationship</div>
+                  <div><span class="font-medium">Landmarks:</span> ${test.landmarkPoints.length}</div>
+                  <div><span class="font-medium">Trails:</span> ${test.trails.length}</div>
+                </div>
+              </div>
+              
+              <div class="chart-container pr-4">
+                <h3 class="font-semibold text-gray-700 mb-3 text-center">Cross-Section Analysis</h3>
+                <div class="rounded-lg p-2">
+                  <div id="scatterChart-${level}" class="w-[350px] h-[350px] aspect-square"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
+                <thead>
+                  <tr class="bg-gray-100">
+                    <th class="border border-gray-300 p-3 text-left font-semibold">Measurement Type</th>
+                    ${test.landmarkPoints.map((l) => `<th class="border border-gray-300 p-3 text-center font-semibold">${l}</th>`).join("")}
+                    <th class="border border-gray-300 p-3 text-center font-semibold">Min</th>
+                    <th class="border border-gray-300 p-3 text-center font-semibold">Max</th>
+                    <th class="border border-gray-300 p-3 text-center font-semibold">Average</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="bg-blue-50">
+                    <td class="border border-gray-300 p-2">Required Measure (mm)</td>
+                    ${requiredMeasureCells}
+                    <td class="border border-gray-300 p-2 text-center">${min.toFixed(1)}</td>
+                    <td class="border border-gray-300 p-2 text-center">${max.toFixed(1)}</td>
+                    <td class="border border-gray-300 p-2 text-center">${avg.toFixed(1)}</td>
+                  </tr>
+                  ${trailRows}
+                  <tr class="bg-gray-50">
+                    <td class="border border-gray-300 p-2">Average</td>
+                    ${avgRow}
+                    <td class="border border-gray-300 p-2 text-center">-</td>
+                    <td class="border border-gray-300 p-2 text-center">-</td>
+                    <td class="border border-gray-300 p-2 text-center">-</td>
+                  </tr>
+                  <tr class="bg-gray-50">
+                    <td class="border border-gray-300 p-2">Minimum</td>
+                    ${minRow}
+                    <td class="border border-gray-300 p-2 text-center">-</td>
+                    <td class="border border-gray-300 p-2 text-center">-</td>
+                    <td class="border border-gray-300 p-2 text-center">-</td>
+                  </tr>
+                  <tr class="font-bold">
+                    <td class="border border-gray-300 p-2 bg-gray-100">Result</td>
+                    ${resultRow}
+                    <td class="border border-gray-300 p-2 text-center">-</td>
+                    <td class="border border-gray-300 p-2 text-center">-</td>
+                    <td class="border border-gray-300 p-2 text-center">-</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+
+        reportSectionContainer.appendChild(section);
+
+        // Create scatter chart
+        const scatterChartContainer = document.getElementById(
+          `scatterChart-${level}`
+        );
+        if (scatterChartContainer) {
+          const canvas = document.createElement("canvas");
+          canvas.id = `chart-${level}`;
+          scatterChartContainer.appendChild(canvas);
+
+          const datasets = [];
+
+          // Add dress/garment dataset
+          if (levelData?.dressIntersectionPoints) {
+            datasets.push({
+              label: "Garment",
+              data: levelData.dressIntersectionPoints.map((p) => ({
+                x: p.x,
+                y: p.z,
+              })),
+              borderColor: "rgb(59, 130, 246)",
+              backgroundColor: "rgba(59, 130, 246, 0.1)",
+              showLine: true,
+              pointRadius: 0,
+              borderWidth: 2,
+              pointHitRadius: 0,
+              fill: false,
+            });
+          }
+
+          // Add body dataset
+          if (levelData?.bodyIntersectionPoints) {
+            datasets.push({
+              label: "Body",
+              data: levelData.bodyIntersectionPoints.map((p) => ({
+                x: p.x,
+                y: p.z,
+              })),
+              borderColor: "rgb(239, 68, 68)",
+              backgroundColor: "rgba(239, 68, 68, 0.1)",
+              showLine: true,
+              pointRadius: 0,
+              borderWidth: 2,
+              pointHitRadius: 0,
+              fill: false,
+            });
+          }
+
+          // Add trail datasets
+          test.trails.forEach((trail, index) => {
+            const trailLevel = trail.levels.find((lvl) => lvl.name === level);
+            if (trailLevel?.dressIntersectionPoints) {
+              const colors = [
+                "rgb(34, 197, 94)",
+                "rgb(168, 85, 247)",
+                "rgb(245, 158, 11)",
+              ];
+              const color = colors[index % colors.length];
+              datasets.push({
+                label: trail.trailname,
+                data: trailLevel.dressIntersectionPoints.map((p) => ({
+                  x: p.x,
+                  y: p.z,
+                })),
+                borderColor: color,
+                backgroundColor: color
+                  .replace("rgb", "rgba")
+                  .replace(")", ", 0.1)"),
+                showLine: true,
+                pointRadius: 0,
+                borderWidth: 2,
+                pointHitRadius: 0,
+                fill: false,
+              });
+            }
+          });
+
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            new Chart(ctx, {
+              type: "scatter",
+              data: { datasets },
+              options: {
+                plugins: {
+                  legend: { display: false },
+                },
+                maintainAspectRatio: false,
+                scales: {
+                  x: {
+                    type: "linear",
+                    min: -2,
+                    max: 2,
+                    reverse: true,
+                    grid: {
+                      display: true,
+                      color: "rgba(0, 0, 0, 0.1)",
+                      lineWidth: 1,
+                    },
+                    ticks: {
+                      display: true,
+                      color: "rgba(0, 0, 0, 0.7)",
+                    },
+                  },
+                  y: {
+                    min: -2,
+                    max: 2,
+                    reverse: true,
+                    grid: {
+                      display: true,
+                      color: "rgba(0, 0, 0, 0.1)",
+                      lineWidth: 1,
+                    },
+                    ticks: {
+                      display: true,
+                      color: "rgba(0, 0, 0, 0.7)",
+                    },
+                  },
+                },
+              },
+            });
+          }
+        }
+      });
+    }
+    loaded = true;
+  };
+
+  // PDF download function
+  (window as any).downloadPDF = () => {
+    // alert(
+    //   "PDF download functionality needs to be implemented with a PDF library like jsPDF or html2pdf"
+    // );
+  };
+</script>

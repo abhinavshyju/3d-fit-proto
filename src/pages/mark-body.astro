@@ -1,0 +1,63 @@
+---
+import CustomLandmarkDialog from "@/components/mark-body/dialogs/custom-landmark-dialog.astro";
+import CustomLevelDialog from "@/components/mark-body/dialogs/custom-level-dialog.astro";
+import LevelSelectDialog from "@/components/mark-body/dialogs/level-select-dialog.astro";
+import LandmarSelectDialog from "@/components/mark-body/dialogs/landmark-select-dialog.astro";
+import LeftSection from "@/components/mark-body/left.astro";
+import RightSection from "@/components/mark-body/right.astro";
+import Layout from "@/layouts/main.astro";
+---
+
+<Layout title="Mark Body">
+  <div class="w-full relative">
+    <CustomLevelDialog />
+    <LevelSelectDialog />
+    <CustomLandmarkDialog />
+    <LandmarSelectDialog />
+    <div class="absolute top-0 left-0 w-full flex justify-center">
+      <div class="flex gap-2">
+        <div
+          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+          onclick="createLevelBtn()"
+        >
+          Create level
+        </div>
+        <div
+          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+          onclick="createCustomLevel()"
+        >
+          Create Custom Level
+        </div>
+        <div
+          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+          onclick="addLandMark()"
+        >
+          Add landmark
+        </div>
+        <div
+          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+          onclick="createCustomLandmark()"
+        >
+          Create Custom landmark
+        </div>
+        <div
+          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+          onclick="unitMeasurement()"
+        >
+          Unit measurement
+        </div>
+      </div>
+    </div>
+
+    <LeftSection />
+    <div class="w-full h-screen rounded" id="viewPort"></div>
+    {/* Center Column */}
+    <!-- <MidSection /> -->
+    {/* Right Column */}
+    <RightSection />
+  </div>
+</Layout>
+
+<script src="../scripts/mark-body/index.ts"></script>
+
+<script></script>

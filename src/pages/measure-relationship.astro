@@ -1,0 +1,202 @@
+---
+import Layout from "@/layouts/main.astro";
+---
+
+<Layout title="Mark Body">
+  <div class="min-h-screen bg-gray-50 p-6">
+    <div class="mx-auto">
+      <div class="grid grid-cols-1 lg:grid-cols-[400px_1fr_1fr] gap-6">
+        <!-- Left Panel -->
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <h1>Upload Body</h1>
+            <input
+              type="file"
+              onchange="bodyUpload(event)"
+              multiple
+              placeholder="Upload Body"
+              class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
+            />
+          </div>
+
+          <div class="bg-white rounded-lg p-4 shadow">
+            <div class="space-y-2 text-sm">
+              <div><strong>TYPE:</strong> Human body / Dressform</div>
+              <div><strong>Name:</strong> Alvaform US missey</div>
+              <div><strong>Size:</strong> 10</div>
+              <div>
+                <strong>Description:</strong> Standard measure of US based on size
+                survey 2024
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <h1>Upload Landmarks</h1>
+            <input
+              type="file"
+              onchange="jsomUpload(event)"
+              class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
+            />
+          </div>
+          <div class="space-y-2">
+            <h1>Upload Garment</h1>
+            <input
+              onchange="garmentUpload(event)"
+              type="file"
+              multiple
+              class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
+            />
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <label for="buyer" class="block text-sm font-medium">Buyer:</label
+              >
+              <input id="buyer" class="mt-1 p-2 border rounded w-full" />
+            </div>
+            <div>
+              <label for="styleNo" class="block text-sm font-medium"
+                >Style no:</label
+              >
+              <input id="styleNo" class="mt-1 p-2 border rounded w-full" />
+            </div>
+            <div>
+              <label for="desc" class="block text-sm font-medium">Desc:</label>
+              <input id="desc" class="mt-1 p-2 border rounded w-full" />
+            </div>
+          </div>
+
+          <button
+            onclick="calculateMeasurement()"
+            class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
+            >Calculate Body-Garment measurements</button
+          >
+        </div>
+
+        <!-- Center Panel -->
+        <div class="flex flex-col justify-center items-center">
+          <h1 class="text-xl font-bold text-center mb-2">
+            Body-Garment measurement
+          </h1>
+          <div
+            class="bg-gray-200 rounded-lg h-[600px] w-[540px] flex items-center justify-center text-center p-4 text-gray-500"
+            id="viewPort"
+          >
+          </div>
+          <div class="grid grid-cols-2 w-full mt-1">
+            <div id="controls">
+              <label>
+                Body X:
+                <input
+                  type="number"
+                  id="BodyX"
+                  min="-10"
+                  max="10"
+                  step="0.001"
+                  value="0"
+                  class="w-20 border rounded p-1"
+                />
+                <span id="BodyXVal">0</span>
+              </label>
+              <br />
+              <label>
+                Body Y:
+                <input
+                  type="number"
+                  id="BodyY"
+                  min="-10"
+                  max="10"
+                  step="0.001"
+                  value="0"
+                  class="w-20 border rounded p-1"
+                />
+                <span id="BodyYVal">0</span>
+              </label>
+              <br />
+              <label>
+                Body Z:
+                <input
+                  type="number"
+                  id="BodyZ"
+                  min="-10"
+                  max="10"
+                  step="0.001"
+                  value="0"
+                  class="w-20 border rounded p-1"
+                />
+                <span id="BodyZVal">0</span>
+              </label>
+            </div>
+            <div id="controls">
+              <label>
+                Garment X:
+                <input
+                  type="number"
+                  id="garmentX"
+                  min="-10"
+                  max="10"
+                  step="0.001"
+                  value="0"
+                  class="w-20 border rounded p-1"
+                />
+                <span id="garmentXVal">0</span>
+              </label>
+              <br />
+              <label>
+                Garment Y:
+                <input
+                  type="number"
+                  id="garmentY"
+                  min="-10"
+                  max="10"
+                  step="0.001"
+                  value="0"
+                  class="w-20 border rounded p-1"
+                />
+                <span id="garmentYVal">0</span>
+              </label>
+              <br />
+              <label>
+                Garment Z:
+                <input
+                  type="number"
+                  id="garmentZ"
+                  min="-10"
+                  max="10"
+                  step="0.001"
+                  value="0"
+                  class="w-20 border rounded p-1"
+                />
+                <span id="garmentZVal">0</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="space-y-4">
+          <div class="bg-white rounded-lg shadow">
+            <div class="p-4 border-b font-semibold text-lg">Measurements</div>
+            <div class="p-4 overflow-x-auto">
+              <table class="min-w-full table-auto text-sm">
+                <thead>
+                  <tr class="bg-gray-100" id="landmarkTableHead">
+                    <th class="text-left font-bold p-2">Landmarks</th>
+                  </tr>
+                </thead>
+                <tbody id="measurementBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <button
+            onclick="saveJson()"
+            class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
+            >Save Body-Garment measurements</button
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>
+<script src="../scripts/measure-relationship/index.ts"></script>

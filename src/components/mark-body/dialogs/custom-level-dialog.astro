@@ -1,0 +1,39 @@
+<div
+  class="absolute top-0 left-0 w-full h-screen bg-white/60 z-50 justify-center items-center hidden"
+  id="customLevelDialog"
+>
+  <div
+    class="bg-white border flex flex-col w-[300px] h-[200px] px-4 py-2 rounded-xl justify-between gap-2"
+  >
+    <div class="flex justify-end">
+      <button onclick="customLevelDialogClose()">X</button>
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="">Create a Custom level</label>
+      <input
+        type="text"
+        id="customLevelInput"
+        class="bg-gray-50 border rounded"
+      /><p class="text-xs text-red-500" id="customLevelDialogError"></p>
+      <button
+        class="bg-black text-white rounded py-1"
+        onclick="createCustomLevelSave()">Save</button
+      >
+    </div>
+    <div class=""></div>
+  </div>
+</div>
+<script>
+  (window as any).createCustomLevel = () => {
+    const customLevelDialog = document.getElementById("customLevelDialog");
+    if (!customLevelDialog) return;
+    customLevelDialog.classList.remove("hidden");
+    customLevelDialog.classList.add("flex");
+  };
+  (window as any).customLevelDialogClose = () => {
+    const customLevelDialog = document.getElementById("customLevelDialog");
+    if (!customLevelDialog) return;
+    customLevelDialog.classList.remove("flex");
+    customLevelDialog.classList.add("hidden");
+  };
+</script>
