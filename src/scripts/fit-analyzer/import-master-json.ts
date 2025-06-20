@@ -2,6 +2,12 @@ import * as THREE from "three";
 
 interface MasterJson {
   fileName: string;
+  fitName: string;
+  tolerance: number;
+  subcategory: string;
+  date: string;
+  category: string;
+  version: string;
   value: Array<{
     levelName: string;
     bodyIntersectionPoints: THREE.Vector3[];
@@ -100,6 +106,12 @@ export async function importMasterJsonFromFile(
               })),
             })),
           })),
+          fitName: raw.fitName,
+          tolerance: raw.tolerance,
+          subcategory: raw.subcategory,
+          date: raw.date,
+          category: raw.category,
+          version: raw.version,
         };
 
         resolve(parsed);

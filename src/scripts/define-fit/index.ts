@@ -3,6 +3,12 @@ import * as THREE from "three";
 let load = false;
 interface MasterJson {
   fileName: string;
+  fitName: string;
+  tolerance: number;
+  subcategory: string;
+  date: string;
+  category: string;
+  version: string;
   value: Array<{
     levelName: string;
     bodyIntersectionPoints: THREE.Vector3[];
@@ -41,6 +47,12 @@ interface MasterJson {
 
 const masterJson: MasterJson = {
   fileName: "",
+  category: "",
+  date: "",
+  fitName: "",
+  subcategory: "",
+  tolerance: 0,
+  version: "",
   criticalMeasurement: [],
   bodyLevels: [],
   value: [],

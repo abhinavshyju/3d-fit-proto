@@ -34,6 +34,7 @@ interface LevelData {
 
 interface MasterJson {
   fileName: string;
+  unit: number;
   bodyLevels: string[];
   landmarkPoints: string[];
   levels: Array<{
@@ -106,6 +107,7 @@ class AppState {
 
   public bodyModel: THREE.Object3D | null = null;
   public fileName = "";
+  public unit = 0;
   public selectedLevel = "";
   public selectTool:
     | "none"
@@ -142,6 +144,7 @@ class AppState {
 
   public masterJson: MasterJson = {
     fileName: "",
+    unit: 1,
     levels: [],
     bodyLevels: [],
     landmarkPoints: [],
@@ -421,7 +424,10 @@ class EventHandlers {
       const distance = state.clickPoints[0].distanceTo(state.clickPoints[1]);
       console.log(distance);
       DOMUtils.toggleDialog("unitMeasurementContainer", true);
-
+      const unitMeasurementInput = document.getElementById(
+        "unitMeasurementInput"
+      ) as HTMLInputElement;
+      unitMeasurementInput.value = (distance * 100).toString();
       state.tempPoints.forEach((point) => scene.remove(point));
       state.reset();
     }
@@ -704,6 +710,17 @@ class EventHandlers {
 
   state.landmarks.push({ name: input.value });
   DOMUtils.toggleDialog("customLandmarkDialog", false);
+  input.value = "";
+};
+(window as any).unitMeasurementSave = () => {
+  const state = AppState.getInstance();
+  const input = DOMUtils.getElementById<HTMLInputElement>(
+    "unitMeasurementInput"
+  );
+
+  if (!input?.value) return;
+  state.masterJson.unit = Number(input?.value);
+  DOMUtils.toggleDialog("unitMeasurementContainer", false);
   input.value = "";
 };
 

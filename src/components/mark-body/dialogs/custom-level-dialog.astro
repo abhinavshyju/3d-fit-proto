@@ -1,39 +1,78 @@
 <div
-  class="absolute top-0 left-0 w-full h-screen bg-white/60 z-50 justify-center items-center hidden"
+  class="fixed inset-0 w-full h-screen bg-black/30 z-50 flex justify-center items-center transition-opacity duration-200 opacity-0 pointer-events-none hidden"
   id="customLevelDialog"
+  style="backdrop-filter: blur(2px);"
 >
   <div
-    class="bg-white border flex flex-col w-[300px] h-[200px] px-4 py-2 rounded-xl justify-between gap-2"
+    class="bg-white shadow-2xl border flex flex-col w-[340px] min-h-[220px] px-6 py-4 rounded-2xl justify-between gap-3 animate-fadeIn relative"
   >
-    <div class="flex justify-end">
-      <button onclick="customLevelDialogClose()">X</button>
-    </div>
-    <div class="flex flex-col gap-2">
-      <label for="">Create a Custom level</label>
+    <button
+      class="absolute top-3 right-3 text-gray-400 hover:text-gray-700 transition-colors text-xl font-bold focus:outline-none"
+      onclick="customLevelDialogClose()"
+      aria-label="Close dialog"
+      title="Close"
+      type="button"
+    >
+      &times;
+    </button>
+    <div class="flex flex-col gap-3 mt-2">
+      <label
+        for="customLevelInput"
+        class="text-base font-semibold text-gray-800"
+        >Create a Custom Level</label
+      >
       <input
         type="text"
         id="customLevelInput"
-        class="bg-gray-50 border rounded"
-      /><p class="text-xs text-red-500" id="customLevelDialogError"></p>
+        placeholder="Enter level name..."
+        class="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/30 text-gray-900 text-sm"
+      />
+      <p class="text-xs text-red-500 min-h-[18px]" id="customLevelDialogError">
+      </p>
       <button
-        class="bg-black text-white rounded py-1"
-        onclick="createCustomLevelSave()">Save</button
+        class="bg-black text-white rounded-lg py-2 mt-1 font-medium hover:bg-gray-900 transition-colors w-full shadow-sm"
+        onclick="createCustomLevelSave()"
+        type="button"
       >
+        Save
+      </button>
     </div>
-    <div class=""></div>
   </div>
 </div>
+<style>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fadeIn {
+    animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+</style>
 <script>
   (window as any).createCustomLevel = () => {
     const customLevelDialog = document.getElementById("customLevelDialog");
     if (!customLevelDialog) return;
     customLevelDialog.classList.remove("hidden");
-    customLevelDialog.classList.add("flex");
+    setTimeout(() => {
+      customLevelDialog.classList.add("flex");
+      customLevelDialog.classList.remove("pointer-events-none", "opacity-0");
+      customLevelDialog.style.opacity = "1";
+    }, 10);
   };
   (window as any).customLevelDialogClose = () => {
     const customLevelDialog = document.getElementById("customLevelDialog");
     if (!customLevelDialog) return;
     customLevelDialog.classList.remove("flex");
-    customLevelDialog.classList.add("hidden");
+    customLevelDialog.classList.add("pointer-events-none");
+    customLevelDialog.style.opacity = "0";
+    setTimeout(() => {
+      customLevelDialog.classList.add("hidden");
+    }, 200);
   };
 </script>

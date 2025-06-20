@@ -3,57 +3,73 @@
 ---
 
 <div
-  class="flex flex-col absolute top-0 left max-h-screen max-w-[600px] w-1/5 px-2 py-4"
+  class="flex flex-col absolute top-0 left-0 max-h-screen max-w-[600px] w-1/5 px-4 py-6 gap-4 z-10"
 >
-  <div class="bg-white rounded-2xl px-2 py-1 border shadow">
-    <h1 class="text-xl font-semibold mb-4">Body levels and landmarks</h1>
-    <div class="flex justify-between w-full mb-2">
-      <div class="flex flex-col">
-        <label for="bodySelect">Select Body</label>
-        <input
-          class="bg-gray-50 border rounded max-w-[200px] text-sm px-1 py-0.5"
-          type="file"
-          id="bodySelect"
-          multiple
-          onchange="bodyUpload(event)"
-        />
-      </div>
+  <div
+    class="bg-white rounded-3xl px-4 py-4 border border-gray-200 shadow-lg flex flex-col gap-4"
+  >
+    <h1 class="text-2xl font-bold mb-2 text-gray-900 tracking-tight">
+      Body Levels & Landmarks
+    </h1>
+    <hr class="border-gray-200 mb-2" />
+    <div class="flex flex-col gap-2">
+      <label for="bodySelect" class="text-sm font-medium text-gray-700 mb-1"
+        >Select Body</label
+      >
+      <input
+        class="bg-gray-50 border border-gray-300 rounded-lg max-w-[220px] text-sm px-2 py-1 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition outline-none file:mr-3 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+        type="file"
+        id="bodySelect"
+        multiple
+        onchange="bodyUpload(event)"
+      />
     </div>
   </div>
 </div>
-<div class="absolute max-w-[400px] w-full left-2 bottom-2 flex flex-col gap-2">
+<div
+  class="absolute max-w-[400px] w-full left-4 bottom-4 flex flex-col gap-4 z-10"
+>
   <div
-    class="bg-white rounded-2xl p-4 shadow w-full hidden"
+    class="bg-white rounded-3xl p-6 shadow-lg w-full border border-gray-200 flex flex-col gap-3 hidden"
     id="unitMeasurementContainer"
   >
-    <div class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+    <div class="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2">
+      <span class="inline-block w-2 h-2 bg-blue-400 rounded-full"></span>
       Unit Measurement
     </div>
     <div class="flex flex-col gap-2">
       <input
         type="number"
-        class="bg-gray-50 border rounded py-1 px-2"
+        class="bg-gray-50 border border-gray-300 rounded-lg py-2 px-3 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition outline-none text-base"
         id="unitMeasurementInput"
+        placeholder="Enter unit (e.g., mm)"
       />
       <button
-        class="bg-gray-100 py-1 rounded-md hover:bg-gray-200 cursor-pointer"
-        onclick="unitMeasurementSave()">Save</button
+        class="bg-blue-500 text-white py-2 rounded-lg font-semibold hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 transition cursor-pointer shadow-sm"
+        onclick="unitMeasurementSave()"
+        type="button">Save</button
       >
     </div>
   </div>
 
-  <div class="bg-white rounded-2xl p-4 shadow w-full">
-    <div class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+  <div
+    class="bg-white rounded-3xl p-6 shadow-lg w-full border border-gray-200 flex flex-col gap-3"
+  >
+    <div class="text-lg font-bold text-gray-800 mb-1 flex items-center gap-2">
+      <span class="inline-block w-2 h-2 bg-green-400 rounded-full"></span>
       Define Levels
     </div>
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
       <p class="text-gray-500 text-sm">
-        Click 3 points on the body to define levels
+        Click <span class="font-semibold text-gray-700">3 points</span> on the body
+        to define levels
       </p>
     </div>
-    <div class="overflow-y-auto max-h-[140px] rounded-lg border">
+    <div
+      class="overflow-y-auto max-h-[140px] rounded-lg border border-gray-100"
+    >
       <table class="w-full text-sm">
-        <thead class="bg-gray-50 sticky top-0">
+        <thead class="bg-gray-50 sticky top-0 z-10">
           <tr>
             <th class="py-2 px-4 text-left font-semibold text-gray-700"
               >Level</th
@@ -61,7 +77,8 @@
             <th class="py-2 px-4"></th>
           </tr>
         </thead>
-        <tbody id="levelTable" class="bg-white divide-y"></tbody>
+        <tbody id="levelTable" class="bg-white divide-y divide-gray-100"
+        ></tbody>
       </table>
     </div>
   </div>

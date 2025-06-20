@@ -14,38 +14,129 @@ import Layout from "@/layouts/main.astro";
     <LevelSelectDialog />
     <CustomLandmarkDialog />
     <LandmarSelectDialog />
-    <div class="absolute top-0 left-0 w-full flex justify-center">
-      <div class="flex gap-2">
-        <div
-          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+    <div class="absolute top-0 left-0 w-full flex justify-center z-10">
+      <div class="flex flex-wrap gap-3 p-3">
+        <button
+          type="button"
+          aria-label="Create level"
+          class="flex items-center gap-2 bg-white text-sm px-4 py-2 rounded-xl font-semibold shadow hover:bg-gray-100 border border-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
           onclick="createLevelBtn()"
         >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 text-blue-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4v16m8-8H4"></path></svg
+          >
           Create level
-        </div>
-        <div
-          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+        </button>
+        <button
+          type="button"
+          aria-label="Create custom level"
+          class="flex items-center gap-2 bg-white text-sm px-4 py-2 rounded-xl font-semibold shadow hover:bg-gray-100 border border-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
           onclick="createCustomLevel()"
         >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 text-green-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M16 7a4 4 0 01-8 0M12 3v4m0 0a4 4 0 01-4 4H4m8-4a4 4 0 014 4h4"
+            ></path></svg
+          >
           Create Custom Level
-        </div>
-        <div
-          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+        </button>
+        <button
+          type="button"
+          aria-label="Add landmark"
+          class="flex items-center gap-2 bg-white text-sm px-4 py-2 rounded-xl font-semibold shadow hover:bg-gray-100 border border-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
           onclick="addLandMark()"
         >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 text-yellow-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            ><circle
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="2"
+              fill="none"></circle><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 8v4m0 4h.01"></path></svg
+          >
           Add landmark
-        </div>
-        <div
-          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+        </button>
+        <button
+          type="button"
+          aria-label="Create custom landmark"
+          class="flex items-center gap-2 bg-white text-sm px-4 py-2 rounded-xl font-semibold shadow hover:bg-gray-100 border border-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
           onclick="createCustomLandmark()"
         >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 text-purple-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            ><rect
+              x="4"
+              y="4"
+              width="16"
+              height="16"
+              rx="2"
+              stroke="currentColor"
+              stroke-width="2"
+              fill="none"></rect><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 9h6v6H9z"></path></svg
+          >
           Create Custom landmark
-        </div>
-        <div
-          class="bg-white text-sm px-3 pb-2 pt-1 rounded-b-xl font-semibold hover:bg-gray-200 cursor-pointer"
+        </button>
+        <button
+          type="button"
+          aria-label="Unit measurement"
+          class="flex items-center gap-2 bg-white text-sm px-4 py-2 rounded-xl font-semibold shadow hover:bg-gray-100 border border-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
           onclick="unitMeasurement()"
         >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-4 w-4 text-red-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 17v-2a4 4 0 014-4h10a4 4 0 014 4v2"></path><circle
+              cx="12"
+              cy="7"
+              r="4"
+              stroke="currentColor"
+              stroke-width="2"
+              fill="none"></circle></svg
+          >
           Unit measurement
-        </div>
+        </button>
       </div>
     </div>
 
