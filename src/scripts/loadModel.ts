@@ -9,6 +9,10 @@ export const loadModel = (
   type: string,
   onLoad: { (loaded: any, fileName: string): void }
 ) => {
+  // Show loading spinner
+  const spinner = document.getElementById("loading-spinner");
+  if (spinner) spinner.style.display = "block";
+
   const input = event.target as HTMLInputElement;
   const files = input.files;
 
@@ -32,35 +36,57 @@ export const loadModel = (
     });
 
     const mtlLoader = new MTLLoader(manager);
-    mtlLoader.load(URL.createObjectURL(mtlFile), (materials) => {
-      materials.preload();
+    mtlLoader.load(
+      URL.createObjectURL(mtlFile),
+      (materials) => {
+        materials.preload();
 
-      const objLoader = new OBJLoader(manager);
-      objLoader.setMaterials(materials);
+        const objLoader = new OBJLoader(manager);
+        objLoader.setMaterials(materials);
 
-      objLoader.load(URL.createObjectURL(objFile), (object) => {
-        object.position.set(0, 0, 0);
-        object.scale.set(0.01, 0.01, 0.01);
+        objLoader.load(
+          URL.createObjectURL(objFile),
+          (object) => {
+            object.position.set(0, 0, 0);
+            object.scale.set(0.01, 0.01, 0.01);
 
-        if (type == "body") {
-        } else {
-          object.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              const mesh = child as THREE.Mesh;
-              const material = mesh.material as THREE.MeshStandardMaterial;
-              if (material) {
-                material.transparent = true;
-                material.opacity = 0.3;
-                material.color.set(0xffffff);
-              }
+            if (type == "body") {
+            } else {
+              object.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                  const mesh = child as THREE.Mesh;
+                  const material = mesh.material as THREE.MeshStandardMaterial;
+                  if (material) {
+                    material.transparent = true;
+                    material.opacity = 0.3;
+                    material.color.set(0xffffff);
+                  }
+                }
+              });
             }
-          });
-        }
-        scene.add(object);
-        if (onLoad) onLoad(object, objFile.name.replace(".obj", ""));
-      });
-    });
+            scene.add(object);
+            if (onLoad) onLoad(object, objFile.name.replace(".obj", ""));
+            // Hide loading spinner on success
+            if (spinner) spinner.style.display = "none";
+          },
+          undefined,
+          (error) => {
+            // Hide loading spinner on error
+            if (spinner) spinner.style.display = "none";
+            alert("Failed to load OBJ file.");
+          }
+        );
+      },
+      undefined,
+      (error) => {
+        // Hide loading spinner on error
+        if (spinner) spinner.style.display = "none";
+        alert("Failed to load MTL file.");
+      }
+    );
   } else {
+    // Hide loading spinner if files are missing
+    if (spinner) spinner.style.display = "none";
     alert("Please select both OBJ and MTL files.");
   }
 };
