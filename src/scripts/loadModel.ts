@@ -49,8 +49,8 @@ export const loadModel = (
               const mesh = child as THREE.Mesh;
               const material = mesh.material as THREE.MeshStandardMaterial;
               if (material) {
-                // material.transparent = true;
-                // material.opacity = 0.3;
+                material.transparent = true;
+                material.opacity = 0.3;
                 material.color.set(0xffffff);
               }
             }

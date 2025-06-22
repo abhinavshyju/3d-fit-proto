@@ -9,6 +9,7 @@ import { getPlaneFromMesh } from "../planeFromMesh";
 import { sortPointsNearestNeighbor } from "../sort";
 import { landMarks } from "../landmarks";
 import Chart from "chart.js/auto";
+import { DragControls } from "three/addons/controls/DragControls.js";
 
 // Types
 interface Level {
@@ -149,6 +150,11 @@ class AppState {
     bodyLevels: [],
     landmarkPoints: [],
   };
+  public landMarkPoints: {
+    level: string;
+    landmark: string;
+    point: THREE.Mesh;
+  }[] = [];
 
   public static getInstance(): AppState {
     if (!AppState.instance) {
@@ -254,11 +260,31 @@ class ChartUtils {
       borderWidth: 2,
       pointHitRadius: 0,
     };
+    function rotatePoints180(dataset: {
+      label?: string;
+      data: any;
+      borderColor?: string;
+      showLine?: boolean;
+      pointRadius?: number;
+      borderWidth?: number;
+      pointHitRadius?: number;
+    }) {
+      return {
+        ...dataset,
+        data: dataset.data.map(({ x, y }: { x: number; y: number }) => ({
+          x: x,
+          y: -y,
+        })),
+      };
+    }
+
+    const rotatedPointDatasets = pointDatasets.map(rotatePoints180);
+    const rotatedBodyDataset = rotatePoints180(bodyDataset);
 
     return new Chart(ctx, {
       type: "scatter",
       data: {
-        datasets: [...pointDatasets, bodyDataset],
+        datasets: [...rotatedPointDatasets, rotatedBodyDataset],
       },
       options: {
         plugins: {
@@ -270,30 +296,10 @@ class ChartUtils {
             type: "linear",
             min: -2,
             max: 2,
-            reverse: true,
-            grid: {
-              display: true,
-              color: "rgba(0, 0, 0, 0.1)",
-              lineWidth: 1,
-            },
-            ticks: {
-              display: true,
-              color: "rgba(0, 0, 0, 0.7)",
-            },
           },
           y: {
             min: -2,
             max: 2,
-            reverse: true,
-            grid: {
-              display: true,
-              color: "rgba(0, 0, 0, 0.1)",
-              lineWidth: 1,
-            },
-            ticks: {
-              display: true,
-              color: "rgba(0, 0, 0, 0.7)",
-            },
           },
         },
       },
@@ -321,6 +327,7 @@ class EventHandlers {
 
   static setupEventListeners(): void {
     window.addEventListener("dblclick", this.onDoubleClick.bind(this));
+    window.addEventListener("click", this.onOneClick.bind(this));
     window.addEventListener("load", this.onWindowLoad.bind(this));
 
     // Level selector change handler
@@ -340,12 +347,28 @@ class EventHandlers {
     setupLighting();
 
     // Add axes helper
-    const axesHelper = new THREE.AxesHelper(100);
-    scene.add(axesHelper);
+    // const axesHelper = new THREE.AxesHelper(100);
+    // scene.add(axesHelper);
 
     animate();
   }
+  static onOneClick(event: MouseEvent): void {
+    const state = AppState.getInstance();
 
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    this.raycaster.setFromCamera(this.mouse, camera);
+
+    const intersects = this.raycaster.intersectObjects(scene.children, true);
+
+    if (intersects.length > 0) {
+      const selectedObject = intersects[0].object;
+      console.log("Clicked on object:", selectedObject);
+    } else {
+      console.log("No object clicked");
+    }
+  }
   static onDoubleClick(event: MouseEvent): void {
     const state = AppState.getInstance();
 
@@ -662,6 +685,11 @@ class EventHandlers {
   if (!landmarkData.includes(landmarkName)) {
     landmarkData.push(landmarkName);
   }
+  state.landMarkPoints.push({
+    landmark: landmarkName,
+    level: levelData.name,
+    point: marker,
+  });
   // REMOVED: The duplicate addition to masterLevel.points
   // The masterJson.levels array contains references to the same objects as localLevelData
   // So adding to levelData.points automatically updates the masterJson
@@ -722,6 +750,31 @@ class EventHandlers {
   state.masterJson.unit = Number(input?.value);
   DOMUtils.toggleDialog("unitMeasurementContainer", false);
   input.value = "";
+};
+(window as any).undo = () => {
+  const state = AppState.getInstance();
+
+  if (state.landMarkPoints.length === 0) {
+    return;
+  }
+
+  const undoItem = state.landMarkPoints[state.landMarkPoints.length - 1];
+  console.log(undoItem);
+
+  const level = state.masterJson.levels.find((l) => l.name === undoItem.level);
+
+  if (level) {
+    const index = level.points.findIndex((i) => i.name === undoItem.landmark);
+    if (index !== -1) {
+      level.points.splice(index, 1);
+    }
+  }
+
+  scene.remove(undoItem.point);
+
+  state.landMarkPoints.pop();
+
+  ChartUtils.updateChart(state.selectedLevel);
 };
 
 (window as any).saveBodyJson = () => {
