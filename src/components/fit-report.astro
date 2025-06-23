@@ -49,23 +49,6 @@ import LevelReport from "./level-report.astro";
           </div>
         </div>
 
-        <div class="mb-6">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <div class="font-semibold text-gray-700 mb-1" id="fit">FIT:</div>
-              <div class="font-semibold text-gray-700 mb-1" id="date">
-                DATE:
-              </div>
-              <div class="font-semibold text-gray-700 mb-1">FABRIC:</div>
-            </div>
-            <div>
-              <div class="font-semibold text-gray-700 mb-1">FIT:</div>
-              <div class="font-semibold text-gray-700 mb-1">DATE:</div>
-              <div class="font-semibold text-gray-700 mb-1">FABRIC:</div>
-            </div>
-          </div>
-        </div>
-
         <div
           class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8 print:grid-cols-4 gap-2 print:h-[723px]"
         >
@@ -109,6 +92,8 @@ import LevelReport from "./level-report.astro";
 <script>
   import { finalJsonStore } from "@/scripts/storage";
   import { rotatePoints180 } from "@/scripts/utils";
+  import { ACTION_ERROR_CODES } from "astro:actions";
+  import { fade } from "astro:transitions";
   import { Chart } from "chart.js";
   import * as THREE from "three";
   let loaded = false;
@@ -164,16 +149,6 @@ import LevelReport from "./level-report.astro";
     } | null = finalJsonStore.get();
 
     if (test != null) {
-      // Set the FIT field
-      const fitDiv = document.getElementById("fit");
-      if (fitDiv) {
-        fitDiv.innerHTML = `FIT: <span class='font-normal'>${test.fitName || "-"}</span>`;
-      }
-      // Set the DATE field
-      const dateDiv = document.getElementById("date");
-      if (dateDiv) {
-        dateDiv.innerHTML = `DATE: <span class='font-normal'>${test.date || "-"}</span>`;
-      }
       const reportSectionContainer = document.getElementById(
         "reportSectionContainer"
       );
