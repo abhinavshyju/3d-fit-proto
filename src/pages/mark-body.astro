@@ -6,7 +6,7 @@ import LandmarSelectDialog from "@/components/mark-body/dialogs/landmark-select-
 import LeftSection from "@/components/mark-body/left.astro";
 import RightSection from "@/components/mark-body/right.astro";
 import Layout from "@/layouts/main.astro";
-import { Undo } from "lucide-react";
+import { Camera, Undo } from "lucide-react";
 ---
 
 <Layout title="Mark Body">
@@ -147,12 +147,19 @@ import { Undo } from "lucide-react";
         </button>
         <button
           type="button"
-          aria-label="Unit measurement"
           class="flex items-center gap-2 bg-white text-sm px-4 py-2 rounded-xl font-semibold shadow hover:bg-gray-100 border border-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
           onclick="undo()"
         >
           <Undo />
           Undo
+        </button>
+        <button
+          type="button"
+          class="flex items-center gap-2 bg-white text-sm px-4 py-2 rounded-xl font-semibold shadow hover:bg-gray-100 border border-gray-200 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onclick="resetCam()"
+        >
+          <Camera />
+          Reset
         </button>
       </div>
     </div>

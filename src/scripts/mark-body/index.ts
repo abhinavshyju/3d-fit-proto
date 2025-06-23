@@ -776,6 +776,9 @@ class EventHandlers {
 
   ChartUtils.updateChart(state.selectedLevel);
 };
+(window as any).resetCam = () => {
+  camera.position.set(0, 0, 10);
+};
 
 (window as any).saveBodyJson = () => {
   const state = AppState.getInstance();

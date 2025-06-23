@@ -90,6 +90,7 @@ import LevelReport from "./level-report.astro";
 <script src="../scripts/fit-analyzer/index.ts"></script>
 <script>
   import { finalJsonStore } from "@/scripts/storage";
+  import { rotatePoints180 } from "@/scripts/utils";
   import { Chart } from "chart.js";
   import * as THREE from "three";
   let loaded = false;
@@ -336,24 +337,6 @@ import LevelReport from "./level-report.astro";
 
           const datasets = [];
 
-          // Add dress/garment dataset
-          if (levelData?.dressIntersectionPoints) {
-            datasets.push({
-              label: "Garment",
-              data: levelData.dressIntersectionPoints.map((p) => ({
-                x: p.x,
-                y: p.z,
-              })),
-              borderColor: "rgb(59, 130, 246)",
-              backgroundColor: "rgba(59, 130, 246, 0.1)",
-              showLine: true,
-              pointRadius: 0,
-              borderWidth: 2,
-              pointHitRadius: 0,
-              fill: false,
-            });
-          }
-
           // Add body dataset
           if (levelData?.bodyIntersectionPoints) {
             datasets.push({
@@ -400,12 +383,12 @@ import LevelReport from "./level-report.astro";
               });
             }
           });
-
+          const rotatedPointDatasets = datasets.map(rotatePoints180);
           const ctx = canvas.getContext("2d");
           if (ctx) {
             new Chart(ctx, {
               type: "scatter",
-              data: { datasets },
+              data: { datasets: rotatedPointDatasets },
               options: {
                 plugins: {
                   legend: { display: false },
@@ -416,30 +399,10 @@ import LevelReport from "./level-report.astro";
                     type: "linear",
                     min: -2,
                     max: 2,
-                    reverse: true,
-                    grid: {
-                      display: true,
-                      color: "rgba(0, 0, 0, 0.1)",
-                      lineWidth: 1,
-                    },
-                    ticks: {
-                      display: true,
-                      color: "rgba(0, 0, 0, 0.7)",
-                    },
                   },
                   y: {
                     min: -2,
                     max: 2,
-                    reverse: true,
-                    grid: {
-                      display: true,
-                      color: "rgba(0, 0, 0, 0.1)",
-                      lineWidth: 1,
-                    },
-                    ticks: {
-                      display: true,
-                      color: "rgba(0, 0, 0, 0.7)",
-                    },
                   },
                 },
               },

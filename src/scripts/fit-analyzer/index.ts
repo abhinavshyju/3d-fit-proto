@@ -369,16 +369,6 @@ export function createChartsPerLevel(data: finaljson): void {
     wrapper.appendChild(canvas);
     container.appendChild(wrapper);
 
-    const baseDataset = {
-      label: "Base",
-      data: level.dressIntersectionPoints.map((p) => ({ x: p.x, y: p.z })),
-      borderColor: "blue",
-      showLine: true,
-      pointRadius: 0,
-      borderWidth: 2,
-      pointHitRadius: 0,
-    };
-
     const bodyDataset = {
       label: "Body",
       data: level.bodyIntersectionPoints.map((p) => ({ x: p.x, y: p.z })),
@@ -409,7 +399,7 @@ export function createChartsPerLevel(data: finaljson): void {
     new Chart(ctx, {
       type: "scatter",
       data: {
-        datasets: [baseDataset, bodyDataset, ...trailDatasets],
+        datasets: [bodyDataset, ...trailDatasets],
       },
       options: {
         plugins: {
