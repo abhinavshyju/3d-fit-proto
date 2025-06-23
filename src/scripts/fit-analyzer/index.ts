@@ -363,106 +363,106 @@ function getColor(index: number): string {
 }
 
 export function createChartsPerLevel(data: finaljson): void {
-  const container = document.getElementById("chartsContainer");
-  if (!container) return;
+  // const container = document.getElementById("chartsContainer");
+  // if (!container) return;
 
-  container.innerHTML = "";
+  // container.innerHTML = "";
 
-  const canvasSize = { width: 400, height: 400 };
+  // const canvasSize = { width: 400, height: 400 };
 
-  data.value.forEach((level, levelIndex) => {
-    const levelName = level.levelName;
+  // data.value.forEach((level, levelIndex) => {
+  //   const levelName = level.levelName;
 
-    // Wrapper for chart with fixed dimensions
-    const wrapper = document.createElement("div");
-    wrapper.style.width = `${canvasSize.width}px`;
-    wrapper.style.height = `${canvasSize.height}px`;
-    wrapper.style.marginBottom = "40px";
+  //   // Wrapper for chart with fixed dimensions
+  //   const wrapper = document.createElement("div");
+  //   wrapper.style.width = `${canvasSize.width}px`;
+  //   wrapper.style.height = `${canvasSize.height}px`;
+  //   wrapper.style.marginBottom = "40px";
 
-    const canvas = document.createElement("canvas");
-    canvas.id = `chart-${levelIndex}`;
-    canvas.width = canvasSize.width;
-    canvas.height = canvasSize.height;
-    const h1 = document.createElement("h1");
-    h1.innerText = levelName.toUpperCase();
-    wrapper.appendChild(h1);
-    wrapper.appendChild(canvas);
-    container.appendChild(wrapper);
+  //   const canvas = document.createElement("canvas");
+  //   canvas.id = `chart-${levelIndex}`;
+  //   canvas.width = canvasSize.width;
+  //   canvas.height = canvasSize.height;
+  //   const h1 = document.createElement("h1");
+  //   h1.innerText = levelName.toUpperCase();
+  //   wrapper.appendChild(h1);
+  //   wrapper.appendChild(canvas);
+  //   container.appendChild(wrapper);
 
-    const bodyDataset = {
-      label: "Body",
-      data: level.bodyIntersectionPoints.map((p) => ({ x: p.x, y: p.z })),
-      borderColor: "red",
-      showLine: true,
-      pointRadius: 0,
-      borderWidth: 2,
-      pointHitRadius: 0,
-    };
-    const colors = [
-      "rgb(34, 197, 94)",
-      "rgb(168, 85, 247)",
-      "rgb(245, 158, 11)",
-    ];
+  //   const bodyDataset = {
+  //     label: "Body",
+  //     data: level.bodyIntersectionPoints.map((p) => ({ x: p.x, y: p.z })),
+  //     borderColor: "red",
+  //     showLine: true,
+  //     pointRadius: 0,
+  //     borderWidth: 2,
+  //     pointHitRadius: 0,
+  //   };
+  //   const colors = [
+  //     "rgb(34, 197, 94)",
+  //     "rgb(168, 85, 247)",
+  //     "rgb(245, 158, 11)",
+  //   ];
 
-    const trailDatasets =
-      data.trails?.map((trail, index) => ({
-        label: trail.trailname,
-        data: (
-          trail.levels.find((lvl) => lvl.name === levelName)
-            ?.dressIntersectionPoints || []
-        ).map((p) => ({ x: p.x, y: p.z })),
-        borderColor: colors[index],
-        showLine: true,
-        pointRadius: 0,
-        borderWidth: 2,
-        pointHitRadius: 0,
-      })) || [];
-    console.log(trailDatasets);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  //   const trailDatasets =
+  //     data.trails?.map((trail, index) => ({
+  //       label: trail.trailname,
+  //       data: (
+  //         trail.levels.find((lvl) => lvl.name === levelName)
+  //           ?.dressIntersectionPoints || []
+  //       ).map((p) => ({ x: p.x, y: p.z })),
+  //       borderColor: colors[index],
+  //       showLine: true,
+  //       pointRadius: 0,
+  //       borderWidth: 2,
+  //       pointHitRadius: 0,
+  //     })) || [];
+  //   console.log(trailDatasets);
+  //   const ctx = canvas.getContext("2d");
+  //   if (!ctx) return;
 
-    new Chart(ctx, {
-      type: "scatter",
-      data: {
-        datasets: [bodyDataset, ...trailDatasets],
-      },
-      options: {
-        plugins: {
-          legend: {
-            position: "bottom",
-            display: true,
-            labels: {
-              boxHeight: 4,
-              boxWidth: 4,
-              font: {
-                size: 12,
-              },
-            },
-          },
-        },
-        maintainAspectRatio: false,
-        scales: {
-          x: {
-            type: "linear",
-            min: -2,
-            max: 2,
-            ticks: {
-              stepSize: 0.5,
-              display: false,
-            },
-          },
-          y: {
-            min: -2,
-            max: 2,
-            ticks: {
-              display: false,
-              stepSize: 0.5,
-            },
-          },
-        },
-      },
-    });
-  });
+  //   new Chart(ctx, {
+  //     type: "scatter",
+  //     data: {
+  //       datasets: [bodyDataset, ...trailDatasets],
+  //     },
+  //     options: {
+  //       plugins: {
+  //         legend: {
+  //           position: "bottom",
+  //           display: true,
+  //           labels: {
+  //             boxHeight: 4,
+  //             boxWidth: 4,
+  //             font: {
+  //               size: 12,
+  //             },
+  //           },
+  //         },
+  //       },
+  //       maintainAspectRatio: false,
+  //       scales: {
+  //         x: {
+  //           type: "linear",
+  //           min: -2,
+  //           max: 2,
+  //           ticks: {
+  //             stepSize: 0.5,
+  //             display: false,
+  //           },
+  //         },
+  //         y: {
+  //           min: -2,
+  //           max: 2,
+  //           ticks: {
+  //             display: false,
+  //             stepSize: 0.5,
+  //           },
+  //         },
+  //       },
+  //     },
+  //   });
+  // });
   setFinalJson(finalJson);
 }
 
