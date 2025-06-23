@@ -288,7 +288,17 @@ class ChartUtils {
       },
       options: {
         plugins: {
-          legend: { display: false },
+          legend: {
+            position: "bottom",
+            display: true,
+            labels: {
+              boxHeight: 4,
+              boxWidth: 4,
+              font: {
+                size: 12,
+              },
+            },
+          },
         },
         maintainAspectRatio: false,
         scales: {
@@ -296,10 +306,18 @@ class ChartUtils {
             type: "linear",
             min: -2,
             max: 2,
+            ticks: {
+              stepSize: 0.5,
+              display: false,
+            },
           },
           y: {
             min: -2,
             max: 2,
+            ticks: {
+              display: false,
+              stepSize: 0.5,
+            },
           },
         },
       },

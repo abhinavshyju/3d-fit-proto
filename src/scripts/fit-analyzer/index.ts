@@ -32,8 +32,15 @@ Chart.register(
 
 interface MasterJson {
   fileName: string;
+  fitName: string;
+  tolerance: number;
+  subcategory: string;
+  date: string;
+  category: string;
+  version: string;
   value: Array<{
     levelName: string;
+
     bodyIntersectionPoints: THREE.Vector3[];
     dressIntersectionPoints: THREE.Vector3[];
     landmarks: Array<{
@@ -70,6 +77,12 @@ interface MasterJson {
 
 interface finaljson {
   fileName: string;
+  fitName: string;
+  tolerance: number;
+  subcategory: string;
+  date: string;
+  category: string;
+  version: string;
   models: Array<{
     name: string;
     body: boolean;
@@ -114,6 +127,12 @@ interface finaljson {
 let masterJson: MasterJson;
 let finalJson: finaljson = {
   fileName: "",
+  category: "",
+  date: "",
+  fitName: "",
+  subcategory: "",
+  tolerance: 0,
+  version: "",
   models: [],
   bodyLevels: [],
   criticalMeasurement: [],
@@ -259,6 +278,7 @@ function handleAllTrialFits() {
   finalJson.bodyLevels = masterJson.bodyLevels;
   finalJson.landmarkPoints = masterJson.landmarkPoints;
   finalJson.value = masterJson.value;
+  finalJson.tolerance = masterJson.tolerance;
   finalJson.criticalMeasurement = masterJson.criticalMeasurement;
 
   ["trial1", "trial2", "trial3"].forEach((trialKey) => {
@@ -378,15 +398,20 @@ export function createChartsPerLevel(data: finaljson): void {
       borderWidth: 2,
       pointHitRadius: 0,
     };
+    const colors = [
+      "rgb(34, 197, 94)",
+      "rgb(168, 85, 247)",
+      "rgb(245, 158, 11)",
+    ];
 
     const trailDatasets =
-      data.trails?.map((trail) => ({
+      data.trails?.map((trail, index) => ({
         label: trail.trailname,
         data: (
           trail.levels.find((lvl) => lvl.name === levelName)
             ?.dressIntersectionPoints || []
         ).map((p) => ({ x: p.x, y: p.z })),
-        borderColor: "yellow",
+        borderColor: colors[index],
         showLine: true,
         pointRadius: 0,
         borderWidth: 2,
@@ -403,7 +428,17 @@ export function createChartsPerLevel(data: finaljson): void {
       },
       options: {
         plugins: {
-          legend: { display: false },
+          legend: {
+            position: "bottom",
+            display: true,
+            labels: {
+              boxHeight: 4,
+              boxWidth: 4,
+              font: {
+                size: 12,
+              },
+            },
+          },
         },
         maintainAspectRatio: false,
         scales: {
@@ -411,29 +446,17 @@ export function createChartsPerLevel(data: finaljson): void {
             type: "linear",
             min: -2,
             max: 2,
-            reverse: true,
-            grid: {
-              display: true,
-              color: "rgba(0, 0, 0, 0.1)",
-              lineWidth: 1,
-            },
             ticks: {
-              display: true,
-              color: "rgba(0, 0, 0, 0.7)",
+              stepSize: 0.5,
+              display: false,
             },
           },
           y: {
             min: -2,
             max: 2,
-            reverse: true,
-            grid: {
-              display: true,
-              color: "rgba(0, 0, 0, 0.1)",
-              lineWidth: 1,
-            },
             ticks: {
-              display: true,
-              color: "rgba(0, 0, 0, 0.7)",
+              display: false,
+              stepSize: 0.5,
             },
           },
         },

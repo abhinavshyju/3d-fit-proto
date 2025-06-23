@@ -4,6 +4,12 @@ import * as THREE from "three";
 // Type Definitions
 export interface FinalJson {
   fileName: string;
+  fitName: string;
+  tolerance: number;
+  subcategory: string;
+  date: string;
+  category: string;
+  version: string;
   models: Array<{
     name: string;
     body: boolean;

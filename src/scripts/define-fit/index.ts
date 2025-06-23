@@ -278,7 +278,8 @@ const handleGarmentUpload = async (event: Event, garmentIndex: number) => {
   landmarkEntry.value = newValue;
 };
 
-(window as any).saveMasterJsonToFile = () => {
+(window as any).saveMasterJsonToFile = async () => {
+  await loadInputDataToMasterJson();
   if (!load) return;
   const jsonStr = JSON.stringify(masterJson, null, 2);
 
@@ -292,3 +293,20 @@ const handleGarmentUpload = async (event: Event, garmentIndex: number) => {
 
   URL.revokeObjectURL(url);
 };
+
+// Loads the form input data into masterJson
+function loadInputDataToMasterJson() {
+  const formInputs = document.querySelectorAll(
+    ".bg-white.rounded-lg.shadow-sm.p-6 input"
+  ) as NodeListOf<HTMLInputElement>;
+
+  if (formInputs.length < 7) return;
+  masterJson.category = formInputs[0].value;
+  masterJson.subcategory = formInputs[1].value;
+  masterJson.fitName = formInputs[2].value;
+
+  masterJson.date = formInputs[4].value;
+  masterJson.tolerance = Number(formInputs[5].value) || 0;
+  masterJson.version = formInputs[6].value;
+  console.log(masterJson);
+}
