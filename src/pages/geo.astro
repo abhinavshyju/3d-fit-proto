@@ -1,0 +1,217 @@
+---
+import Layout from "@/layouts/main.astro";
+---
+
+<Layout>
+  <div style="margin-bottom: 10px;">
+    <input type="file" id="upload-json" accept=".json" />
+    <button id="clear-all" style="margin-left: 10px;">Clear All</button>
+  </div>
+  <div id="ggb-element" style="width: 100%; height: 90vh;"></div>
+
+  <script src="https://cdn.geogebra.org/apps/deployggb.js"></script>
+
+  <script>
+    /** @type {HTMLInputElement | null} */
+    const input = document.getElementById("upload-json");
+    /** @type {HTMLButtonElement | null} */
+    const clearButton = document.getElementById("clear-all");
+    /** @type {any} */
+    let finalJson = null;
+    /** @type {GGBApplet | null} */
+    let ggbApplet = null;
+
+    // GGBApplet is provided by GeoGebra's script, so we need to declare it for type safety
+    /**
+     * @typedef {Object} GGBApplet
+     * @property {(elementId: string) => void} inject
+     * @property {(cmd: string) => void} evalCommand
+     * @property {(objName: string) => void} deleteObject
+     */
+    // @ts-ignore
+    const ggbApp = new window.GGBApplet(
+      {
+        appName: "3d",
+        showToolBar: true,
+        showAlgebraInput: true,
+        showMenuBar: true,
+        enable3d: true,
+        perspective: "T", // 3D Graphics view
+      },
+      true
+    );
+
+    // Initialize GeoGebra when DOM is loaded
+    document.addEventListener("DOMContentLoaded", () => {
+      ggbApp.inject("ggb-element");
+      // Set up the callback for when GeoGebra is ready
+      // @ts-ignore
+      window.ggbOnReady = function () {
+        // @ts-ignore
+        ggbApplet = window.ggbApplet;
+        console.log("GeoGebra is ready!");
+        // Process any JSON that was loaded before GeoGebra was ready
+        if (finalJson) {
+          addGeoPoints(finalJson);
+        }
+      };
+    });
+
+    // File upload handler
+    input?.addEventListener("change", async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || !target.files) return;
+      const file = target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        finalJson = JSON.parse(text);
+        console.log("JSON loaded:", finalJson);
+        // Add points if GeoGebra is ready
+        if (ggbApplet) {
+          clearAll();
+          addGeoPoints(finalJson);
+        }
+      } catch (err) {
+        console.error("Failed to parse JSON:", err);
+        alert("Failed to parse JSON file. Please check the file format.");
+      }
+    });
+
+    // Clear all button handler
+    clearButton?.addEventListener("click", () => {
+      clearAll();
+      finalJson = null;
+      if (input) input.value = "";
+    });
+
+    function clearAll() {
+      if (ggbApplet) {
+        ggbApplet.deleteObject("*");
+      }
+    }
+
+    /**
+     * @param {string} label
+     * @param {number} x
+     * @param {number} y
+     * @param {number} z
+     */
+    function setPoint(label, x, y, z) {
+      if (!ggbApplet) return;
+      try {
+        const command = `${label} = (${x}, ${y}, ${z})`;
+        ggbApplet.evalCommand(command);
+      } catch (err) {
+        console.error(`Failed to create point ${label}:`, err);
+      }
+    }
+
+    /**
+     * @param {any} data
+     */
+    function addGeoPoints(data) {
+      if (!ggbApplet || !data) return;
+      console.log("Adding geo points...");
+      // Process main data points
+      if (data.value && Array.isArray(data.value)) {
+        data.value.forEach((level, i) => {
+          /** @type {string[]} */
+          const pointLabels = [];
+          // Add body intersection points
+          if (
+            level.bodyIntersectionPoints &&
+            Array.isArray(level.bodyIntersectionPoints)
+          ) {
+            level.bodyIntersectionPoints.forEach((pt, j) => {
+              if (
+                pt &&
+                typeof pt.x === "number" &&
+                typeof pt.y === "number" &&
+                typeof pt.z === "number"
+              ) {
+                const label = `B${i}_${j}`;
+                setPoint(label, pt.x, pt.y, pt.z);
+                pointLabels.push(label);
+              }
+            });
+            // Create polyline if we have multiple points
+            if (pointLabels.length > 1) {
+              try {
+                const polylineCommand = `BodyLine${i} = Polyline(${pointLabels.join(", ")})`;
+                ggbApplet.evalCommand(polylineCommand);
+              } catch (err) {
+                console.error(`Failed to create polyline for level ${i}:`, err);
+              }
+            }
+          }
+          // Add landmarks
+          if (level.landmarks && Array.isArray(level.landmarks)) {
+            level.landmarks.forEach((lm, j) => {
+              if (
+                lm &&
+                lm.point &&
+                typeof lm.point.x === "number" &&
+                typeof lm.point.y === "number" &&
+                typeof lm.point.z === "number"
+              ) {
+                const label = `L${i}_${j}`;
+                setPoint(label, lm.point.x, lm.point.y, lm.point.z);
+              }
+            });
+          }
+        });
+      }
+      // Process trails
+      if (data.trails && Array.isArray(data.trails)) {
+        data.trails.forEach((trail, t) => {
+          if (trail.levels && Array.isArray(trail.levels)) {
+            trail.levels.forEach((level, l) => {
+              if (level.points && Array.isArray(level.points)) {
+                level.points.forEach((pt, p) => {
+                  if (
+                    pt &&
+                    pt.bodyPoint &&
+                    pt.dressPoint &&
+                    typeof pt.bodyPoint.x === "number" &&
+                    typeof pt.bodyPoint.y === "number" &&
+                    typeof pt.bodyPoint.z === "number" &&
+                    typeof pt.dressPoint.x === "number" &&
+                    typeof pt.dressPoint.y === "number" &&
+                    typeof pt.dressPoint.z === "number"
+                  ) {
+                    const bodyLabel = `TB${t}_${l}_${p}`;
+                    const dressLabel = `TD${t}_${l}_${p}`;
+                    setPoint(
+                      bodyLabel,
+                      pt.bodyPoint.x,
+                      pt.bodyPoint.y,
+                      pt.bodyPoint.z
+                    );
+                    setPoint(
+                      dressLabel,
+                      pt.dressPoint.x,
+                      pt.dressPoint.y,
+                      pt.dressPoint.z
+                    );
+                    try {
+                      ggbApplet.evalCommand(
+                        `TrailSeg_${t}_${l}_${p} = Segment(${bodyLabel}, ${dressLabel})`
+                      );
+                    } catch (err) {
+                      console.error(
+                        `Failed to create trail segment ${t}_${l}_${p}:`,
+                        err
+                      );
+                    }
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+      console.log("Finished adding geo points");
+    }
+  </script>
+</Layout>

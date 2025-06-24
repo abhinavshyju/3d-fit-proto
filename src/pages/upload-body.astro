@@ -1,0 +1,77 @@
+---
+import Layout from "@/layouts/main.astro";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card.tsx";
+import { buttonVariants } from "@/components/ui/button.tsx";
+import { cn } from "@/lib/utils.ts";
+---
+
+<Layout title="Upload Body">
+  <div class="w-full relative">
+    <div class="w-full h-screen rounded" id="viewPort"></div>
+    <div class="absolute top-4 right-4">
+      <Card className="w-[350px]">
+        <CardHeader>
+          <CardTitle>Controls</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="flex flex-col gap-4">
+            <div>
+              <input
+                type="file"
+                multiple
+                id="body-upload-input"
+                class="hidden"
+                onchange="bodyUpload(event)"
+              />
+              <button
+                class={cn(buttonVariants({ variant: "outline" }), "w-full")}
+                onclick="document.getElementById('body-upload-input').click()"
+              >
+                Upload Body
+              </button>
+            </div>
+            <button class={buttonVariants()} onclick="createSaPlane()">
+              Create Saggital Plane
+            </button>
+            <button class={buttonVariants()} onclick="createTrPlane()">
+              Create Transverse Plane
+            </button>
+            <button class={buttonVariants()} onclick="createCrPlane()">
+              Create Coronal Plane
+            </button>
+            <button class={buttonVariants()} onclick="alignBody()">
+              Align Body
+            </button>
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                class={cn(buttonVariants({ variant: "outline" }))}
+                onclick="rotateX180()"
+              >
+                Rotate X
+              </button>
+              <button
+                class={cn(buttonVariants({ variant: "outline" }))}
+                onclick="rotateY180()"
+              >
+                Rotate Y
+              </button>
+              <button
+                class={cn(buttonVariants({ variant: "outline" }))}
+                onclick="rotateZ180()"
+              >
+                Rotate Z
+              </button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+</Layout>
+
+<script src="../scripts/upload-model/index.ts"></script>

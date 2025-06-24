@@ -492,4 +492,23 @@ window.uploadFit = async (event: Event) => {
   }
 };
 
+(window as any).saveBodyJson = () => {
+  console.log(finalJson);
+  if (!finalJson.fileName) {
+    console.error("No filename available for saving");
+    return;
+  }
+
+  const json = JSON.stringify(finalJson, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${finalJson.fileName}_report.json`;
+  link.click();
+
+  URL.revokeObjectURL(url);
+};
+
 window.loadFit = () => handleAllTrialFits();

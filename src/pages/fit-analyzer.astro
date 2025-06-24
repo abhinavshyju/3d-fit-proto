@@ -1,6 +1,7 @@
 ---
 import FitReport from "@/components/fit-report.astro";
 import Layout from "@/layouts/main.astro";
+import { Save } from "lucide-react";
 ---
 
 <style>
@@ -297,6 +298,13 @@ import Layout from "@/layouts/main.astro";
                   ></path>
                 </svg>
                 Generate Report
+              </button>
+              <button
+                onclick="saveBodyJson()"
+                class="action-button btn-success w-full"
+              >
+                <Save />
+                Save Json
               </button>
             </div>
           </div>
