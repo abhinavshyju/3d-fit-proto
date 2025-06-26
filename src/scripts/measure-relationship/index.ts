@@ -1,6 +1,6 @@
 import { loadModel } from "../loadModel";
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/Addons.js"; 
+import { OrbitControls } from "three/examples/jsm/Addons.js";
 import { importMasterJson } from "./import-master-json";
 import { createPoint } from "../create-point";
 import type { ColorName } from "../constant/colors";
@@ -74,7 +74,7 @@ interface MasterJson {
     name: string;
     bodyIntersectionPoints: THREE.Vector3[];
     dressIntersectionPoints: THREE.Vector3[];
-    points: Array<{
+    garmentLandmark: Array<{
       name: string;
       bodyPoint: THREE.Vector3;
       dressPoint: THREE.Vector3;
@@ -178,7 +178,7 @@ let measure = false;
       masterJson.levels.push({
         name: item.name,
         bodyIntersectionPoints: item.intersectionPoints,
-        points: points,
+        garmentLandmark: points,
         dressIntersectionPoints: [],
       });
     });
@@ -214,7 +214,7 @@ let measure = false;
 
     item.dressIntersectionPoints = garmentIntersectionPoints;
 
-    item.points.forEach((point) => {
+    item.garmentLandmark.forEach((point) => {
       let minDistance = Infinity;
       let nearestPoint: THREE.Vector3 | null = null;
 
@@ -253,7 +253,7 @@ let measure = false;
       let distance = 0;
 
       if (level) {
-        const point = level.points.find((pt) => pt.name === landmark);
+        const point = level.garmentLandmark.find((pt) => pt.name === landmark);
         if (point) distance = point.distance;
       }
 

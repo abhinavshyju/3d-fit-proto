@@ -9,7 +9,7 @@ interface MasterJson {
     name: string;
     bodyIntersectionPoints: THREE.Vector3[];
     dressIntersectionPoints: THREE.Vector3[];
-    points: Array<{
+    garmentLandmark: Array<{
       name: string;
       bodyPoint: THREE.Vector3;
       dressPoint: THREE.Vector3;
@@ -43,7 +43,7 @@ export async function importMasterJsonFromFile(
               level.bodyIntersectionPoints.map(parseVector3),
             dressIntersectionPoints:
               level.dressIntersectionPoints.map(parseVector3),
-            points: level.points.map((pt: any) => ({
+            garmentLandmark: level.garmentLandmark.map((pt: any) => ({
               name: pt.name,
               bodyPoint: parseVector3(pt.bodyPoint),
               dressPoint: parseVector3(pt.dressPoint),

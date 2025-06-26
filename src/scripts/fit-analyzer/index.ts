@@ -64,7 +64,7 @@ interface MasterJson {
       name: string;
       bodyIntersectionPoints: THREE.Vector3[];
       dressIntersectionPoints: THREE.Vector3[];
-      points: Array<{
+      garmentLandmark: Array<{
         name: string;
         bodyPoint: THREE.Vector3;
         dressPoint: THREE.Vector3;
@@ -113,7 +113,7 @@ interface finaljson {
       name: string;
       bodyIntersectionPoints: THREE.Vector3[];
       dressIntersectionPoints: THREE.Vector3[];
-      points: Array<{
+      garmentLandmark: Array<{
         name: string;
         bodyPoint: THREE.Vector3;
         dressPoint: THREE.Vector3;
@@ -341,7 +341,7 @@ function handleAllTrialFits() {
         name: item.levelName,
         bodyIntersectionPoints: points,
         dressIntersectionPoints: intersections,
-        points: pointsMapped,
+        garmentLandmark: pointsMapped,
       });
     });
 

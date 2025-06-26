@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils.ts";
             <button class={buttonVariants()} onclick="createCrPlane()">
               Create Coronal Plane
             </button>
+
             <button class={buttonVariants()} onclick="alignBody()">
               Align Body
             </button>
@@ -67,6 +68,9 @@ import { cn } from "@/lib/utils.ts";
                 Rotate Z
               </button>
             </div>
+            <button class={buttonVariants()} onclick="saveAlignedOBJ()">
+              Save model
+            </button>
           </div>
         </CardContent>
       </Card>

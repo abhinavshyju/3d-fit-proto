@@ -40,7 +40,7 @@ export interface FinalJson {
       name: string;
       bodyIntersectionPoints: THREE.Vector3[];
       dressIntersectionPoints: THREE.Vector3[];
-      points: Array<{
+      garmentLandmark: Array<{
         name: string;
         bodyPoint: THREE.Vector3;
         dressPoint: THREE.Vector3;

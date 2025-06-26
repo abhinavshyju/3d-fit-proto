@@ -34,7 +34,7 @@ interface MasterJson {
       name: string;
       bodyIntersectionPoints: THREE.Vector3[];
       dressIntersectionPoints: THREE.Vector3[];
-      points: Array<{
+      garmentLandmark: Array<{
         name: string;
         bodyPoint: THREE.Vector3;
         dressPoint: THREE.Vector3;
@@ -139,7 +139,9 @@ const handleGarmentUpload = async (event: Event, garmentIndex: number) => {
 
       masterJson.garments.forEach((garment) => {
         const levelObj = garment.levels.find((l) => l.name === level);
-        const pointObj = levelObj?.points.find((p) => p.name === landmark);
+        const pointObj = levelObj?.garmentLandmark.find(
+          (p) => p.name === landmark
+        );
 
         if (pointObj) {
           distances.push(pointObj.distance);
@@ -185,7 +187,7 @@ const handleGarmentUpload = async (event: Event, garmentIndex: number) => {
         (g) =>
           g?.levels
             .find((l) => l.name === level)
-            ?.points.find((p) => p.name === landmark)?.distance ?? 0
+            ?.garmentLandmark.find((p) => p.name === landmark)?.distance ?? 0
       );
       const average = (distances.reduce((a, b) => a + b, 0) / 3).toFixed(2);
       const isCritical = masterJson.criticalMeasurement.some(
