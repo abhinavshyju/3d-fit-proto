@@ -157,7 +157,7 @@ const trialMap: Record<
 const tempModel = [];
 function handleModelUpload(
   event: Event,
-  type: "body" | "Trial 1" | "Trial 2" | "Trial 3"
+  type: "body" | "trial1" | "trial2" | "trial3"
 ) {
   const scene = type === "body" ? bodySceneT.getScene() : trialMap[type].scene;
   loadModel(event, scene, type, (model, _fileName) => {
@@ -298,9 +298,9 @@ declare global {
 }
 
 window.uploadBody = (event) => handleModelUpload(event, "body");
-window.uploadTrialOne = (event) => handleModelUpload(event, "Trial 1");
-window.uploadTrialTwo = (event) => handleModelUpload(event, "Trial 2");
-window.uploadTrialThree = (event) => handleModelUpload(event, "Trial 3");
+window.uploadTrialOne = (event) => handleModelUpload(event, "trial1");
+window.uploadTrialTwo = (event) => handleModelUpload(event, "trial2");
+window.uploadTrialThree = (event) => handleModelUpload(event, "trial3");
 
 window.uploadFit = async (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0];
