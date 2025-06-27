@@ -189,7 +189,7 @@ function handleAllTrialFits() {
   finalJson.tolerance = masterJson.tolerance;
   finalJson.criticalMeasurement = masterJson.criticalMeasurement;
   const trials: Trail[] = [];
-  ["Trial 1", "Trial 2", "Trial 3"].forEach((trialKey) => {
+  ["trial1", "trial2", "trial3"].forEach((trialKey) => {
     const trial = trialMap[trialKey];
     if (!trial.model) return;
 
