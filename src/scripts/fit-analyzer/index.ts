@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
 import { loadModel } from "../loadModel";
-import { importMasterJsonFromFile } from "./import-master-json";
 import { createPlaneFromThreePoints } from "../create-plane";
 import { getModelPlaneIntersections } from "../model-intersector";
 import { getPlaneFromMesh } from "../planeFromMesh";
@@ -19,6 +18,8 @@ import {
   Legend,
 } from "chart.js";
 import { setFinalJson } from "../storage";
+import type { MasterJson, Trail } from "../type";
+import { importMasterJsonFromFile } from "../JsonImport";
 
 Chart.register(
   ScatterController,
@@ -30,102 +31,8 @@ Chart.register(
   Legend
 );
 
-interface MasterJson {
-  fileName: string;
-  fitName: string;
-  tolerance: number;
-  subcategory: string;
-  date: string;
-  category: string;
-  version: string;
-  value: Array<{
-    levelName: string;
-
-    bodyIntersectionPoints: THREE.Vector3[];
-    dressIntersectionPoints: THREE.Vector3[];
-    landmarks: Array<{
-      name: string;
-      point: THREE.Vector3;
-      dis: number;
-      value: number;
-      avg: number;
-    }>;
-  }>;
-  bodyLevels: string[];
-  landmarkPoints: string[];
-  criticalMeasurement: Array<{
-    level: string;
-    landmark: string;
-    critical: boolean;
-  }>;
-  garments: Array<{
-    garmentName: string;
-    levels: Array<{
-      name: string;
-      bodyIntersectionPoints: THREE.Vector3[];
-      dressIntersectionPoints: THREE.Vector3[];
-      garmentLandmark: Array<{
-        name: string;
-        bodyPoint: THREE.Vector3;
-        dressPoint: THREE.Vector3;
-        distance: number;
-        color: string;
-      }>;
-    }>;
-  }>;
-}
-
-interface finaljson {
-  fileName: string;
-  fitName: string;
-  tolerance: number;
-  subcategory: string;
-  date: string;
-  category: string;
-  version: string;
-  models: Array<{
-    name: string;
-    body: boolean;
-    model: THREE.Object3D<THREE.Object3DEventMap>;
-  }>;
-  value: Array<{
-    levelName: string;
-    bodyIntersectionPoints: THREE.Vector3[];
-    dressIntersectionPoints: THREE.Vector3[];
-    landmarks: Array<{
-      name: string;
-      point: THREE.Vector3;
-      dis: number;
-      value: number;
-      avg: number;
-    }>;
-  }>;
-  bodyLevels: string[];
-  landmarkPoints: string[];
-  criticalMeasurement: Array<{
-    level: string;
-    landmark: string;
-    critical: boolean;
-  }>;
-  trails: Array<{
-    trailname: string;
-    levels: Array<{
-      name: string;
-      bodyIntersectionPoints: THREE.Vector3[];
-      dressIntersectionPoints: THREE.Vector3[];
-      garmentLandmark: Array<{
-        name: string;
-        bodyPoint: THREE.Vector3;
-        dressPoint: THREE.Vector3;
-        distance: number;
-        color: string;
-      }>;
-    }>;
-  }>;
-}
-
 let masterJson: MasterJson;
-let finalJson: finaljson = {
+let finalJson: MasterJson = {
   fileName: "",
   category: "",
   date: "",
@@ -133,12 +40,14 @@ let finalJson: finaljson = {
   subcategory: "",
   tolerance: 0,
   version: "",
-  models: [],
   bodyLevels: [],
   criticalMeasurement: [],
-  landmarkPoints: [],
+  landmarks: [],
   trails: [],
   value: [],
+  unit: null,
+  body: null,
+  garment: null,
 };
 let loaded = false;
 setFinalJson(null);
@@ -245,17 +154,17 @@ const trialMap: Record<
     sceneTwo: rTThreeViewPort.getScene(),
   },
 };
-
+const tempModel = [];
 function handleModelUpload(
   event: Event,
-  type: "body" | "trial1" | "trial2" | "trial3"
+  type: "body" | "Trial 1" | "Trial 2" | "Trial 3"
 ) {
   const scene = type === "body" ? bodySceneT.getScene() : trialMap[type].scene;
   loadModel(event, scene, type, (model, _fileName) => {
     if (type === "body") {
       bodyModel = model;
       rBodyViewPort.getScene().add(model.clone(true));
-      finalJson.models.push({
+      tempModel.push({
         name: "body",
         body: true,
         model: model,
@@ -263,7 +172,7 @@ function handleModelUpload(
     } else {
       trialMap[type].model = model;
       trialMap[type].sceneTwo.add(model.clone(true));
-      finalJson.models.push({
+      tempModel.push({
         body: false,
         name: type,
         model: model,
@@ -274,32 +183,37 @@ function handleModelUpload(
 
 function handleAllTrialFits() {
   if (loaded) return;
-  finalJson.fileName = masterJson.fileName;
   finalJson.bodyLevels = masterJson.bodyLevels;
-  finalJson.landmarkPoints = masterJson.landmarkPoints;
+  finalJson.landmarks = masterJson.landmarks;
   finalJson.value = masterJson.value;
   finalJson.tolerance = masterJson.tolerance;
   finalJson.criticalMeasurement = masterJson.criticalMeasurement;
-
-  ["trial1", "trial2", "trial3"].forEach((trialKey) => {
+  const trials: Trail[] = [];
+  ["Trial 1", "Trial 2", "Trial 3"].forEach((trialKey) => {
     const trial = trialMap[trialKey];
     if (!trial.model) return;
 
-    const input = {
-      trailname: trialKey,
-      levels: [] as finaljson["trails"][0]["levels"],
+    const input: Trail = {
+      trailName: trialKey,
+      levels: [],
     };
-
+    if (!masterJson.value) return;
     masterJson.value.forEach((item) => {
-      const points = item.bodyIntersectionPoints;
-      if (points.length < 3) return;
+      const level = masterJson.body?.levels?.find(
+        (i) => i?.name == item?.levelName
+      );
 
-      const len = points.length;
-      const p1 = points[Math.floor(Math.random() * (len / 3))];
+      const intersectionPoints = level?.intersectionPoints;
+      if (!intersectionPoints || intersectionPoints.length < 3) return;
+
+      const len = intersectionPoints.length;
+      const p1 = intersectionPoints[Math.floor(Math.random() * (len / 3))];
       const p2 =
-        points[Math.floor(len / 3) + Math.floor(Math.random() * (len / 3))];
+        intersectionPoints[
+          Math.floor(len / 3) + Math.floor(Math.random() * (len / 3))
+        ];
       const p3 =
-        points[
+        intersectionPoints[
           Math.floor((2 * len) / 3) + Math.floor(Math.random() * (len / 3))
         ];
 
@@ -315,10 +229,14 @@ function handleAllTrialFits() {
       );
       trial.scene.add(line);
 
-      const pointsMapped = item.landmarks.map((landmark) => {
+      // Ensure item and item.landmarks are not null or undefined
+      const pointsMapped = level?.landmarks?.map((landmark) => {
+        if (!landmark || !landmark.point) return null;
         const nearest = intersections.reduce(
           (nearest, point) => {
-            const dist = point.distanceTo(landmark.point);
+            const dist = point.distanceTo(
+              landmark.point || new THREE.Vector3()
+            );
             return dist < nearest.distance
               ? { point, distance: dist }
               : nearest;
@@ -330,25 +248,26 @@ function handleAllTrialFits() {
         trial.scene.add(marker);
         return {
           name: landmark.name,
-          bodyPoint: landmark.point,
-          dressPoint: nearest.point,
+          point: nearest.point,
           distance: nearest.distance,
           color: "red",
         };
       });
 
-      input.levels.push({
-        name: item.levelName,
-        bodyIntersectionPoints: points,
-        dressIntersectionPoints: intersections,
-        garmentLandmark: pointsMapped,
+      input.levels?.push({
+        name: item?.levelName || "",
+        intersectionPoints: intersections,
+        landmarks: pointsMapped ?? null,
       });
     });
 
-    finalJson.trails.push(input);
+    trials.push(input);
   });
   loaded = true;
-  createChartsPerLevel(finalJson);
+
+  finalJson.trails?.push(...trials);
+  // createChartsPerLevel(finalJson);
+  setFinalJson(finalJson);
 }
 
 function getAverageMagnitude(points: THREE.Vector3[]): number {
@@ -362,109 +281,10 @@ function getColor(index: number): string {
   return colors[index % colors.length];
 }
 
-export function createChartsPerLevel(data: finaljson): void {
-  // const container = document.getElementById("chartsContainer");
-  // if (!container) return;
+// export function createChartsPerLevel(data: finaljson): void {
 
-  // container.innerHTML = "";
-
-  // const canvasSize = { width: 400, height: 400 };
-
-  // data.value.forEach((level, levelIndex) => {
-  //   const levelName = level.levelName;
-
-  //   // Wrapper for chart with fixed dimensions
-  //   const wrapper = document.createElement("div");
-  //   wrapper.style.width = `${canvasSize.width}px`;
-  //   wrapper.style.height = `${canvasSize.height}px`;
-  //   wrapper.style.marginBottom = "40px";
-
-  //   const canvas = document.createElement("canvas");
-  //   canvas.id = `chart-${levelIndex}`;
-  //   canvas.width = canvasSize.width;
-  //   canvas.height = canvasSize.height;
-  //   const h1 = document.createElement("h1");
-  //   h1.innerText = levelName.toUpperCase();
-  //   wrapper.appendChild(h1);
-  //   wrapper.appendChild(canvas);
-  //   container.appendChild(wrapper);
-
-  //   const bodyDataset = {
-  //     label: "Body",
-  //     data: level.bodyIntersectionPoints.map((p) => ({ x: p.x, y: p.z })),
-  //     borderColor: "red",
-  //     showLine: true,
-  //     pointRadius: 0,
-  //     borderWidth: 2,
-  //     pointHitRadius: 0,
-  //   };
-  //   const colors = [
-  //     "rgb(34, 197, 94)",
-  //     "rgb(168, 85, 247)",
-  //     "rgb(245, 158, 11)",
-  //   ];
-
-  //   const trailDatasets =
-  //     data.trails?.map((trail, index) => ({
-  //       label: trail.trailname,
-  //       data: (
-  //         trail.levels.find((lvl) => lvl.name === levelName)
-  //           ?.dressIntersectionPoints || []
-  //       ).map((p) => ({ x: p.x, y: p.z })),
-  //       borderColor: colors[index],
-  //       showLine: true,
-  //       pointRadius: 0,
-  //       borderWidth: 2,
-  //       pointHitRadius: 0,
-  //     })) || [];
-  //   console.log(trailDatasets);
-  //   const ctx = canvas.getContext("2d");
-  //   if (!ctx) return;
-
-  //   new Chart(ctx, {
-  //     type: "scatter",
-  //     data: {
-  //       datasets: [bodyDataset, ...trailDatasets],
-  //     },
-  //     options: {
-  //       plugins: {
-  //         legend: {
-  //           position: "bottom",
-  //           display: true,
-  //           labels: {
-  //             boxHeight: 4,
-  //             boxWidth: 4,
-  //             font: {
-  //               size: 12,
-  //             },
-  //           },
-  //         },
-  //       },
-  //       maintainAspectRatio: false,
-  //       scales: {
-  //         x: {
-  //           type: "linear",
-  //           min: -2,
-  //           max: 2,
-  //           ticks: {
-  //             stepSize: 0.5,
-  //             display: false,
-  //           },
-  //         },
-  //         y: {
-  //           min: -2,
-  //           max: 2,
-  //           ticks: {
-  //             display: false,
-  //             stepSize: 0.5,
-  //           },
-  //         },
-  //       },
-  //     },
-  //   });
-  // });
-  setFinalJson(finalJson);
-}
+//   setFinalJson(finalJson);
+// }
 
 declare global {
   interface Window {
@@ -478,15 +298,39 @@ declare global {
 }
 
 window.uploadBody = (event) => handleModelUpload(event, "body");
-window.uploadTrialOne = (event) => handleModelUpload(event, "trial1");
-window.uploadTrialTwo = (event) => handleModelUpload(event, "trial2");
-window.uploadTrialThree = (event) => handleModelUpload(event, "trial3");
+window.uploadTrialOne = (event) => handleModelUpload(event, "Trial 1");
+window.uploadTrialTwo = (event) => handleModelUpload(event, "Trial 2");
+window.uploadTrialThree = (event) => handleModelUpload(event, "Trial 3");
 
 window.uploadFit = async (event: Event) => {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
   try {
     masterJson = await importMasterJsonFromFile(file);
+    console.log(masterJson);
+    finalJson.fileName = masterJson.fileName ?? "";
+    finalJson.body = masterJson.body;
+    finalJson.fitName = masterJson.fitName ?? "";
+    finalJson.tolerance = masterJson.tolerance ?? 0;
+    finalJson.subcategory = masterJson.subcategory ?? "";
+    finalJson.date = masterJson.date ?? "";
+    finalJson.category = masterJson.category ?? "";
+    finalJson.version = masterJson.version ?? "";
+    finalJson.value = (masterJson.value ?? []).map((v) => ({
+      levelName: v?.levelName ?? "",
+      landmarks: (v?.landmarks ?? []).map((l) => ({
+        name: l?.name ?? "",
+        value: l?.value ?? 0,
+        avg: l?.avg ?? 0,
+      })),
+    }));
+    finalJson.bodyLevels = (masterJson.bodyLevels ?? []).filter(
+      (x): x is string => !!x
+    );
+    finalJson.landmarks = (masterJson.landmarks ?? []).filter(
+      (x): x is string => !!x
+    );
+    finalJson.criticalMeasurement = masterJson.criticalMeasurement ?? [];
   } catch (err) {
     console.error("Failed to import JSON:", err);
   }

@@ -92,365 +92,574 @@ import LevelReport from "./level-report.astro";
 <script>
   import { finalJsonStore } from "@/scripts/storage";
   import { rotatePoints180 } from "@/scripts/utils";
-  import { ACTION_ERROR_CODES } from "astro:actions";
-  import { fade } from "astro:transitions";
   import { Chart } from "chart.js";
   import * as THREE from "three";
+  import type {
+    MasterJson,
+    Level,
+    Trail,
+    ValueEntry,
+    Landmark,
+    ValueLandmark,
+  } from "@/scripts/type";
+
+  interface ChartDataPoint {
+    x: number;
+    y: number;
+  }
+
+  interface ChartDataset {
+    label: string;
+    data: ChartDataPoint[];
+    borderColor: string;
+    backgroundColor: string;
+    showLine: boolean;
+    pointRadius: number;
+    borderWidth: number;
+    pointHitRadius: number;
+    fill: boolean;
+  }
+
+  interface ProcessedTrailData {
+    trailName: string;
+    distances: number[];
+    avg: number;
+    min: number;
+    max: number;
+    cells: string;
+  }
+
+  interface ProcessedLevelData {
+    levelName: string;
+    landmarks: ValueLandmark[];
+    avg: number;
+    min: number;
+    max: number;
+  }
+
+  interface LandmarkDistance {
+    landmarkIndex: number;
+    distances: number[];
+  }
+
   let loaded = false;
-  (window as any).report = () => {
-    if (loaded) return;
-    const test: {
-      fileName: string;
-      fitName: string;
-      tolerance: number;
-      subcategory: string;
-      date: string;
-      category: string;
-      version: string;
-      models: Array<{
-        name: string;
-        body: boolean;
-        model: THREE.Object3D<THREE.Object3DEventMap>;
-      }>;
-      value: Array<{
-        levelName: string;
-        bodyIntersectionPoints: THREE.Vector3[];
-        dressIntersectionPoints: THREE.Vector3[];
-        landmarks: Array<{
-          name: string;
-          point: THREE.Vector3;
-          dis: number;
-          value: number;
-          avg: number;
-        }>;
-      }>;
-      bodyLevels: string[];
-      landmarkPoints: string[];
-      criticalMeasurement: Array<{
-        level: string;
-        landmark: string;
-        critical: boolean;
-      }>;
-      trails: Array<{
-        trailname: string;
-        levels: Array<{
-          name: string;
-          bodyIntersectionPoints: THREE.Vector3[];
-          dressIntersectionPoints: THREE.Vector3[];
-          points: Array<{
-            name: string;
-            bodyPoint: THREE.Vector3;
-            dressPoint: THREE.Vector3;
-            distance: number;
-            color: string;
-          }>;
-        }>;
-      }>;
-    } | null = finalJsonStore.get();
 
-    if (test != null) {
-      const reportSectionContainer = document.getElementById(
-        "reportSectionContainer"
+  // Type-safe null check helpers
+  function isNotNull<T>(value: T | null | undefined): value is T {
+    return value !== null && value !== undefined;
+  }
+
+  function safeArray<T>(arr: (T | null)[] | null | undefined): T[] {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(isNotNull);
+  }
+
+  function safeString(
+    value: string | null | undefined,
+    defaultValue = ""
+  ): string {
+    return typeof value === "string" ? value : defaultValue;
+  }
+
+  function safeNumber(
+    value: number | null | undefined,
+    defaultValue = 0
+  ): number {
+    return typeof value === "number" && !isNaN(value) ? value : defaultValue;
+  }
+
+  function isValidVector3(point: any): point is THREE.Vector3 {
+    return (
+      point &&
+      typeof point.x === "number" &&
+      typeof point.y === "number" &&
+      typeof point.z === "number"
+    );
+  }
+
+  function processTrailData(
+    trail: Trail,
+    level: string,
+    landmarkDistances: number[][]
+  ): ProcessedTrailData | null {
+    if (!trail.levels) return null;
+
+    const levelTrail = trail.levels.find(
+      (tl): tl is Level => isNotNull(tl) && tl.name === level
+    );
+
+    if (!levelTrail?.landmarks) return null;
+
+    const validLandmarks = safeArray(levelTrail.landmarks);
+    if (validLandmarks.length === 0) return null;
+
+    const distances = validLandmarks
+      .map((landmark) => safeNumber(landmark.distance, 0) * 100)
+      .filter((dist) => dist >= 0);
+
+    if (distances.length === 0) return null;
+
+    const avg =
+      distances.reduce((acc, dist) => acc + dist, 0) / distances.length;
+    const min = Math.min(...distances);
+    const max = Math.max(...distances);
+
+    const cells = validLandmarks
+      .map((landmark, i) => {
+        const dist = safeNumber(landmark.distance, 0) * 100;
+        if (i < landmarkDistances.length) {
+          landmarkDistances[i].push(dist);
+        }
+        return `<td class="border border-gray-300 p-2 text-center">${dist.toFixed(1)}</td>`;
+      })
+      .join("");
+
+    return {
+      trailName: safeString(trail.trailName, "Unknown Trail"),
+      distances,
+      avg,
+      min,
+      max,
+      cells,
+    };
+  }
+
+  function processLevelData(
+    test: MasterJson,
+    level: string
+  ): ProcessedLevelData {
+    const levelData = safeArray(test.value).find(
+      (entry): entry is ValueEntry =>
+        isNotNull(entry) && entry.levelName === level
+    );
+
+    const landmarks = levelData ? safeArray(levelData.landmarks) : [];
+
+    let avg = 0,
+      min = 0,
+      max = 0;
+    if (landmarks.length > 0) {
+      const values = landmarks
+        .map((landmark) => safeNumber(landmark.value))
+        .filter((value) => value > 0);
+
+      if (values.length > 0) {
+        avg = values.reduce((a, b) => a + b, 0) / values.length;
+        min = Math.min(...values);
+        max = Math.max(...values);
+      }
+    }
+
+    return {
+      levelName: level,
+      landmarks,
+      avg,
+      min,
+      max,
+    };
+  }
+
+  function generateRequiredMeasureCells(
+    landmarks: string[],
+    levelLandmarks: ValueLandmark[]
+  ): string {
+    return landmarks
+      .map((landmarkName) => {
+        const landmark = levelLandmarks.find((l) => l.name === landmarkName);
+        const value = safeNumber(landmark?.value);
+
+        if (value <= 0) {
+          return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+        }
+        return `<td class="border border-gray-300 p-2 text-center">${value.toFixed(1)}</td>`;
+      })
+      .join("");
+  }
+
+  function generateAverageRow(landmarkDistances: number[][]): string {
+    return landmarkDistances
+      .map((distances) => {
+        if (distances.length === 0) {
+          return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+        }
+        const avg = distances.reduce((a, b) => a + b, 0) / distances.length;
+        return `<td class="border border-gray-300 p-2 text-center">${avg.toFixed(1)}</td>`;
+      })
+      .join("");
+  }
+
+  function generateToleranceRangeRow(
+    landmarks: string[],
+    levelLandmarks: ValueLandmark[],
+    tolerance: number
+  ): string {
+    return landmarks
+      .map((landmarkName) => {
+        const landmark = levelLandmarks.find((l) => l.name === landmarkName);
+        const value = safeNumber(landmark?.value);
+
+        if (value <= 0 || tolerance <= 0) {
+          return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+        }
+
+        const absoluteTolerance = value * (tolerance / 100);
+        const lower = value - absoluteTolerance;
+        const upper = value + absoluteTolerance;
+        return `<td class="border border-gray-300 p-2 text-center">${lower.toFixed(1)} - ${upper.toFixed(1)}</td>`;
+      })
+      .join("");
+  }
+
+  function generateResultRow(
+    landmarks: string[],
+    levelLandmarks: ValueLandmark[],
+    landmarkDistances: number[][],
+    tolerance: number
+  ): string {
+    return landmarkDistances
+      .map((distances, i) => {
+        if (distances.length === 0 || i >= landmarks.length) {
+          return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+        }
+
+        const landmarkName = landmarks[i];
+        const landmark = levelLandmarks.find((l) => l.name === landmarkName);
+        const value = safeNumber(landmark?.value);
+
+        if (value <= 0 || tolerance <= 0) {
+          return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+        }
+
+        const avg = distances.reduce((a, b) => a + b, 0) / distances.length;
+        const absoluteTolerance = value * (tolerance / 100);
+        const lower = value - absoluteTolerance;
+        const upper = value + absoluteTolerance;
+        const result = lower <= avg && avg <= upper ? "Pass" : "Fail";
+        const bgColor = result === "Pass" ? "bg-green-100" : "bg-red-100";
+        const textColor = result === "Pass" ? "text-green-800" : "text-red-800";
+
+        return `<td class="border border-gray-300 ${bgColor} ${textColor} p-2 text-center font-semibold">${result}</td>`;
+      })
+      .join("");
+  }
+
+  function createChartDatasets(
+    test: MasterJson,
+    level: string
+  ): ChartDataset[] {
+    const datasets: ChartDataset[] = [];
+
+    // Add body dataset
+    const bodyLevel = safeArray(test.body?.levels).find(
+      (lvl): lvl is Level => isNotNull(lvl) && lvl.name === level
+    );
+    console.log(level);
+    console.log(test);
+    if (bodyLevel?.intersectionPoints) {
+      const bodyPoints = safeArray(bodyLevel.intersectionPoints)
+        .filter(isValidVector3)
+        .map((p): ChartDataPoint => ({ x: p.x, y: p.z }));
+
+      if (bodyPoints.length > 0) {
+        datasets.push({
+          label: "Body",
+          data: bodyPoints,
+          borderColor: "rgb(239, 68, 68)",
+          backgroundColor: "rgba(239, 68, 68, 0.1)",
+          showLine: true,
+          pointRadius: 0,
+          borderWidth: 2,
+          pointHitRadius: 0,
+          fill: false,
+        });
+      }
+    }
+
+    // Add trail datasets
+    const trails = safeArray(test.trails);
+    const colors = [
+      "rgb(34, 197, 94)",
+      "rgb(168, 85, 247)",
+      "rgb(245, 158, 11)",
+    ];
+
+    trails.forEach((trail, index) => {
+      if (!trail.levels) return;
+
+      const trailLevel = trail.levels.find(
+        (lvl): lvl is Level => isNotNull(lvl) && lvl.name === level
       );
-      if (!reportSectionContainer) return;
 
-      test.bodyLevels.forEach((level, levelIndex) => {
-        const section = document.createElement("div");
-        section.className = "print:break-inside-avoid";
+      if (trailLevel?.intersectionPoints) {
+        const trailPoints = safeArray(trailLevel.intersectionPoints)
+          .filter(isValidVector3)
+          .map((p): ChartDataPoint => ({ x: p.x, y: p.z }));
 
-        if (levelIndex > 0) {
-          section.className += " print:break-before-page";
+        if (trailPoints.length > 0) {
+          const color = colors[index % colors.length];
+
+          datasets.push({
+            label: safeString(trail.trailName, `Trail ${index + 1}`),
+            data: trailPoints,
+            borderColor: color,
+            backgroundColor: color
+              .replace("rgb", "rgba")
+              .replace(")", ", 0.1)"),
+            showLine: true,
+            pointRadius: 0,
+            borderWidth: 2,
+            pointHitRadius: 0,
+            fill: false,
+          });
         }
+      }
+    });
 
-        const landmarkCount = test.landmarkPoints.length;
-        const landmarkDistances: number[][] = Array.from(
-          { length: landmarkCount },
-          () => []
-        );
+    return datasets;
+  }
 
-        const trailRows = test.trails
-          .map((trail) => {
-            const levelTrail = trail.levels.find((tl) => tl.name === level);
-            if (
-              !levelTrail ||
-              !levelTrail.points ||
-              levelTrail.points.length === 0
-            )
-              return "";
+  function createScatterChart(test: MasterJson, level: string): void {
+    console.log(test);
+    const scatterChartContainer = document.getElementById(
+      `scatterChart-${level}`
+    );
+    if (!scatterChartContainer) {
+      console.warn(`Chart container not found for level: ${level}`);
+      return;
+    }
 
-            const distances = levelTrail.points.map((p) => p.distance * 100);
-            const tAvg =
-              distances.reduce((acc, dist) => acc + dist, 0) / distances.length;
-            const tMin = Math.min(...distances);
-            const tMax = Math.max(...distances);
+    const canvas = document.createElement("canvas");
+    canvas.id = `chart-${level}`;
+    scatterChartContainer.appendChild(canvas);
 
-            const trailCells = levelTrail.points
-              .map((p, i) => {
-                const dist = p.distance * 100;
-                if (i < landmarkDistances.length) {
-                  landmarkDistances[i].push(dist);
-                }
-                return `<td class="border border-gray-300 p-2 text-center">${dist.toFixed(1)}</td>`;
-              })
-              .join("");
+    const datasets = createChartDatasets(test, level);
 
-            return `
-              <tr class="hover:bg-gray-50">
-                <td class="border border-gray-300 p-2 bg-gray-50">${trail.trailname}</td>
-                ${trailCells}
-                <td class="border border-gray-300 p-2 text-center">${tMin.toFixed(1)}</td>
-                <td class="border border-gray-300 p-2 text-center">${tMax.toFixed(1)}</td>
-                <td class="border border-gray-300 p-2 text-center">${tAvg.toFixed(1)}</td>
-              </tr>
-            `;
-          })
-          .filter((row) => row !== "")
-          .join("");
+    if (datasets.length === 0) {
+      console.warn(`No chart data available for level: ${level}`);
+      return;
+    }
 
-        const levelData = test.value.find((i) => i.levelName === level);
-        const landmarks = levelData?.landmarks || [];
+    try {
+      const rotatedPointDatasets = datasets.map(rotatePoints180);
+      const ctx = canvas.getContext("2d");
 
-        let avg = 0,
-          min = 0,
-          max = 0;
-        if (landmarks.length > 0) {
-          avg = landmarks.reduce((a, c) => a + c.value, 0) / landmarks.length;
-          min = Math.min(...landmarks.map((l) => l.value));
-          max = Math.max(...landmarks.map((l) => l.value));
-        }
+      if (!ctx) {
+        console.error("Failed to get canvas context");
+        return;
+      }
 
-        const requiredMeasureCells = landmarks
-          .map(
-            (l) =>
-              `<td class="border border-gray-300 p-2 text-center">${l.value.toFixed(1)}</td>`
-          )
-          .join("");
+      new Chart(ctx, {
+        type: "scatter",
+        data: { datasets: rotatedPointDatasets },
+        options: {
+          plugins: {
+            legend: {
+              position: "bottom",
+              display: true,
+              labels: {
+                boxHeight: 4,
+                boxWidth: 4,
+                font: { size: 12 },
+              },
+            },
+          },
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: "linear",
+              min: -2,
+              max: 2,
+              ticks: { stepSize: 0.5, display: false },
+            },
+            y: {
+              min: -2,
+              max: 2,
+              ticks: { display: false, stepSize: 0.5 },
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.error(`Error creating chart for level ${level}:`, error);
+    }
+  }
 
-        const avgRow = landmarkDistances
-          .map((arr) => {
-            if (arr.length === 0)
-              return `<td class="border border-gray-300 p-2 text-center">-</td>`;
-            const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
-            return `<td class="border border-gray-300 p-2 text-center">${avg.toFixed(1)}</td>`;
-          })
-          .join("");
-        console.log(test.tolerance);
-        const toleranceRangeRow = landmarks
-          .map((l) => {
-            if (
-              !l ||
-              typeof l.value !== "number" ||
-              typeof test.tolerance !== "number"
-            )
-              return `<td class="border border-gray-300 p-2 text-center">-</td>`;
-            const absoluteTolerance = l.value * (test.tolerance / 100);
-            const lower = l.value - absoluteTolerance;
-            const upper = l.value + absoluteTolerance;
-            return `<td class="border border-gray-300 p-2 text-center">${lower.toFixed(1)} - ${upper.toFixed(1)}</td>`;
-          })
-          .join("");
+  (window as any).report = (): void => {
+    if (loaded) {
+      console.log("Report already loaded");
+      return;
+    }
 
-        const resultRow = landmarkDistances
-          .map((arr, i) => {
-            if (
-              arr.length === 0 ||
-              !landmarks[i] ||
-              typeof landmarks[i].value !== "number" ||
-              typeof test.tolerance !== "number"
-            )
-              return `<td class="border border-gray-300 p-2 text-center">-</td>`;
-            const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
-            const l = landmarks[i];
-            const absoluteTolerance = l.value * (test.tolerance / 100);
-            const lower = l.value - absoluteTolerance;
-            const upper = l.value + absoluteTolerance;
-            const result = lower <= avg && avg <= upper ? "Pass" : "Fail";
-            const bgColor = result === "Pass" ? "bg-green-100" : "bg-red-100";
-            const textColor =
-              result === "Pass" ? "text-green-800" : "text-red-800";
-            return `<td class="border border-gray-300 ${bgColor} ${textColor} p-2 text-center font-semibold">${result}</td>`;
-          })
-          .join("");
+    const test = finalJsonStore.get();
+    console.log({ "test one": test });
+    if (!isNotNull(test)) {
+      console.warn("No test data available");
+      return;
+    }
 
-        section.innerHTML = `
-          <div class="space-y-6 ">
-            <h2 class="text-center text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 print:text-xl">
-              ${level.toUpperCase()} Level - Body-Garment Relationship
-            </h2>
+    const reportSectionContainer = document.getElementById(
+      "reportSectionContainer"
+    );
+    if (!reportSectionContainer) {
+      console.error("Report section container not found");
+      return;
+    }
 
-            <div class="grid grid-cols-[1fr_400px] gap-6 ">
-              <div class=" p-4">
-                <h3 class="font-semibold text-gray-700 mb-3">Report Details</h3>
-                <div class="space-y-2 text-sm">
-                  <div><span class="font-medium">Level:</span> ${level.toUpperCase()}</div>
-                  <div><span class="font-medium">Analysis Type:</span> Body-Garment Relationship</div>
-                  <div><span class="font-medium">Landmarks:</span> ${test.landmarkPoints.length}</div>
-                  <div><span class="font-medium">Trails:</span> ${test.trails.length}</div>
-                </div>
-              </div>
-              
-              <div class="chart-container pr-4">
-                <h3 class="font-semibold text-gray-700 mb-3 text-center">Cross-Section Analysis</h3>
-                <div class="rounded-lg p-2">
-                  <div id="scatterChart-${level}" class="w-[350px] h-[350px] aspect-square"></div>
-                </div>
+    const bodyLevels = safeArray(test.bodyLevels).filter(
+      (level) => typeof level === "string"
+    );
+    const landmarks = safeArray(test.landmarks).filter(
+      (landmark) => typeof landmark === "string"
+    );
+    const trails = safeArray(test.trails);
+
+    if (bodyLevels.length === 0) {
+      console.warn("No body levels found");
+      return;
+    }
+
+    const tolerance = safeNumber(test.tolerance, 5); // Default 5% tolerance
+
+    bodyLevels.forEach((level, levelIndex) => {
+      const section = document.createElement("div");
+      section.className = "print:break-inside-avoid";
+
+      if (levelIndex > 0) {
+        section.className += " print:break-before-page";
+      }
+
+      const landmarkDistances: number[][] = Array.from(
+        { length: landmarks.length },
+        () => []
+      );
+
+      // Process trails with type safety
+      const processedTrails = trails
+        .map((trail) => processTrailData(trail, level, landmarkDistances))
+        .filter(isNotNull);
+
+      const trailRows = processedTrails
+        .map(
+          (trailData) => `
+          <tr class="hover:bg-gray-50">
+            <td class="border border-gray-300 p-2 bg-gray-50">${trailData.trailName}</td>
+            ${trailData.cells}
+            <td class="border border-gray-300 p-2 text-center">${trailData.min.toFixed(1)}</td>
+            <td class="border border-gray-300 p-2 text-center">${trailData.max.toFixed(1)}</td>
+            <td class="border border-gray-300 p-2 text-center">${trailData.avg.toFixed(1)}</td>
+          </tr>
+        `
+        )
+        .join("");
+
+      // Process level data with type safety
+      const levelData = processLevelData(test, level);
+
+      const requiredMeasureCells = generateRequiredMeasureCells(
+        landmarks,
+        levelData.landmarks
+      );
+      const avgRow = generateAverageRow(landmarkDistances);
+      const toleranceRangeRow = generateToleranceRangeRow(
+        landmarks,
+        levelData.landmarks,
+        tolerance
+      );
+      const resultRow = generateResultRow(
+        landmarks,
+        levelData.landmarks,
+        landmarkDistances,
+        tolerance
+      );
+
+      section.innerHTML = `
+        <div class="space-y-6">
+          <h2 class="text-center text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 print:text-xl">
+            ${level.toUpperCase()} Level - Body-Garment Relationship
+          </h2>
+
+          <div class="grid grid-cols-[1fr_400px] gap-6">
+            <div class="p-4">
+              <h3 class="font-semibold text-gray-700 mb-3">Report Details</h3>
+              <div class="space-y-2 text-sm">
+                <div><span class="font-medium">Level:</span> ${level.toUpperCase()}</div>
+                <div><span class="font-medium">Analysis Type:</span> Body-Garment Relationship</div>
+                <div><span class="font-medium">Landmarks:</span> ${landmarks.length}</div>
+                <div><span class="font-medium">Trails:</span> ${trails.length}</div>
+                <div><span class="font-medium">Tolerance:</span> ±${tolerance.toFixed(1)}%</div>
               </div>
             </div>
-
-            <div class="overflow-x-auto">
-              <table class="w-full border-collapse bg-white shadow-sm text-xs rounded-lg overflow-hidden">
-                <thead>
-                  <tr class="bg-gray-100">
-                    <th class="border border-gray-300 p-3 text-left font-semibold">Measurement Type</th>
-                    ${test.landmarkPoints.map((l) => `<th class="border border-gray-300 p-3 text-center font-semibold">${l}</th>`).join("")}
-                    <th class="border border-gray-300 p-3 text-center font-semibold">Min</th>
-                    <th class="border border-gray-300 p-3 text-center font-semibold">Max</th>
-                    <th class="border border-gray-300 p-3 text-center font-semibold">Average</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr class="bg-blue-50">
-                    <td class="border border-gray-300 p-2">Required Measure (mm)</td>
-                    ${requiredMeasureCells}
-                    <td class="border border-gray-300 p-2 text-center">${min.toFixed(1)}</td>
-                    <td class="border border-gray-300 p-2 text-center">${max.toFixed(1)}</td>
-                    <td class="border border-gray-300 p-2 text-center">${avg.toFixed(1)}</td>
-                  </tr>
-                  ${trailRows}
-                  <tr class="bg-gray-50">
-                    <td class="border border-gray-300 p-2">Average</td>
-                    ${avgRow}
-                    <td class="border border-gray-300 p-2 text-center">-</td>
-                    <td class="border border-gray-300 p-2 text-center">-</td>
-                    <td class="border border-gray-300 p-2 text-center">-</td>
-                  </tr>
-                  <tr class="bg-gray-50">
-                    <td class="border border-gray-300 p-2">Tolerance Range</td>
-                    ${toleranceRangeRow}
-                    <td class="border border-gray-300 p-2 text-center">-</td>
-                    <td class="border border-gray-300 p-2 text-center">-</td>
-                    <td class="border border-gray-300 p-2 text-center">-</td>
-                  </tr>
-                  <tr class="font-bold">
-                    <td class="border border-gray-300 p-2 bg-gray-100">Result</td>
-                    ${resultRow}
-                    <td class="border border-gray-300 p-2 text-center">-</td>
-                    <td class="border border-gray-300 p-2 text-center">-</td>
-                    <td class="border border-gray-300 p-2 text-center">-</td>
-                  </tr>
-                </tbody>
-              </table>
+            
+            <div class="chart-container pr-4">
+              <h3 class="font-semibold text-gray-700 mb-3 text-center">Cross-Section Analysis</h3>
+              <div class="rounded-lg p-2">
+                <div id="scatterChart-${level}" class="w-[350px] h-[350px] aspect-square"></div>
+              </div>
             </div>
           </div>
-        `;
 
-        reportSectionContainer.appendChild(section);
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse bg-white shadow-sm text-xs rounded-lg overflow-hidden">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="border border-gray-300 p-3 text-left font-semibold">Measurement Type</th>
+                  ${landmarks
+                    .map(
+                      (landmark) =>
+                        `<th class="border border-gray-300 p-3 text-center font-semibold">${landmark}</th>`
+                    )
+                    .join("")}
+                  <th class="border border-gray-300 p-3 text-center font-semibold">Min</th>
+                  <th class="border border-gray-300 p-3 text-center font-semibold">Max</th>
+                  <th class="border border-gray-300 p-3 text-center font-semibold">Average</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="bg-blue-50">
+                  <td class="border border-gray-300 p-2">Required Measure (mm)</td>
+                  ${requiredMeasureCells}
+                  <td class="border border-gray-300 p-2 text-center">${levelData.min.toFixed(1)}</td>
+                  <td class="border border-gray-300 p-2 text-center">${levelData.max.toFixed(1)}</td>
+                  <td class="border border-gray-300 p-2 text-center">${levelData.avg.toFixed(1)}</td>
+                </tr>
+                ${trailRows}
+                <tr class="bg-gray-50">
+                  <td class="border border-gray-300 p-2">Average</td>
+                  ${avgRow}
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                </tr>
+                <tr class="bg-gray-50">
+                  <td class="border border-gray-300 p-2">Tolerance Range</td>
+                  ${toleranceRangeRow}
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                </tr>
+                <tr class="font-bold">
+                  <td class="border border-gray-300 p-2 bg-gray-100">Result</td>
+                  ${resultRow}
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
 
-        // Create scatter chart
-        const scatterChartContainer = document.getElementById(
-          `scatterChart-${level}`
-        );
-        if (scatterChartContainer) {
-          const canvas = document.createElement("canvas");
-          canvas.id = `chart-${level}`;
-          scatterChartContainer.appendChild(canvas);
+      reportSectionContainer.appendChild(section);
+      createScatterChart(test, level);
+    });
 
-          const datasets = [];
-
-          // Add body dataset
-          if (levelData?.bodyIntersectionPoints) {
-            datasets.push({
-              label: "Body",
-              data: levelData.bodyIntersectionPoints.map((p) => ({
-                x: p.x,
-                y: p.z,
-              })),
-              borderColor: "rgb(239, 68, 68)",
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
-              showLine: true,
-              pointRadius: 0,
-              borderWidth: 2,
-              pointHitRadius: 0,
-              fill: false,
-            });
-          }
-
-          // Add trail datasets
-          test.trails.forEach((trail, index) => {
-            const trailLevel = trail.levels.find((lvl) => lvl.name === level);
-            if (trailLevel?.dressIntersectionPoints) {
-              const colors = [
-                "rgb(34, 197, 94)",
-                "rgb(168, 85, 247)",
-                "rgb(245, 158, 11)",
-              ];
-              const color = colors[index % colors.length];
-              datasets.push({
-                label: trail.trailname,
-                data: trailLevel.dressIntersectionPoints.map((p) => ({
-                  x: p.x,
-                  y: p.z,
-                })),
-                borderColor: color,
-                backgroundColor: color
-                  .replace("rgb", "rgba")
-                  .replace(")", ", 0.1)"),
-                showLine: true,
-                pointRadius: 0,
-                borderWidth: 2,
-                pointHitRadius: 0,
-                fill: false,
-              });
-            }
-          });
-          const rotatedPointDatasets = datasets.map(rotatePoints180);
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            new Chart(ctx, {
-              type: "scatter",
-              data: { datasets: rotatedPointDatasets },
-              options: {
-                plugins: {
-                  legend: {
-                    position: "bottom",
-                    display: true,
-                    labels: {
-                      boxHeight: 4,
-                      boxWidth: 4,
-                      font: {
-                        size: 12,
-                      },
-                    },
-                  },
-                },
-                maintainAspectRatio: false,
-                scales: {
-                  x: {
-                    type: "linear",
-                    min: -2,
-                    max: 2,
-                    ticks: {
-                      stepSize: 0.5,
-                      display: false,
-                    },
-                  },
-                  y: {
-                    min: -2,
-                    max: 2,
-                    ticks: {
-                      display: false,
-                      stepSize: 0.5,
-                    },
-                  },
-                },
-              },
-            });
-          }
-        }
-      });
-    }
     loaded = true;
+    console.log("Report generated successfully");
   };
 
-  (window as any).downloadPDF = () => {};
+  (window as any).downloadPDF = (): void => {
+    console.log("PDF download functionality not implemented");
+    // TODO: Implement PDF generation logic
+  };
 </script>

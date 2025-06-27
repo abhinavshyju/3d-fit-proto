@@ -1,7 +1,7 @@
 import { loadModel } from "../loadModel";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
-import { importMasterJson } from "./import-master-json";
+
 import { createPoint } from "../create-point";
 import type { ColorName } from "../constant/colors";
 import { retarget } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -9,6 +9,8 @@ import { createPlaneFromThreePoints } from "../create-plane";
 import { getModelPlaneIntersections } from "../model-intersector";
 import { getPlaneFromMesh } from "../planeFromMesh";
 import { sortPointsNearestNeighbor } from "../sort";
+import type { Landmark, MasterJson } from "../type";
+import { importMasterJsonFromFile } from "../JsonImport";
 
 export const scene: THREE.Scene = new THREE.Scene();
 scene.background = new THREE.Color(0x303030);
@@ -61,35 +63,31 @@ axesHelper.position.set(0, 0, 0);
 scene.add(axesHelper);
 
 let bodyModel: THREE.Object3D | null = null;
-let gramentModel: THREE.Object3D | null = null;
-let fileName: string;
+let garmentModel: THREE.Object3D | null = null;
 let garmentName: string;
 
-interface MasterJson {
-  fileName: string;
-  garmentName: string;
-  bodyLevels: string[];
-  landmarkPoints: string[];
-  levels: Array<{
-    name: string;
-    bodyIntersectionPoints: THREE.Vector3[];
-    dressIntersectionPoints: THREE.Vector3[];
-    garmentLandmark: Array<{
-      name: string;
-      bodyPoint: THREE.Vector3;
-      dressPoint: THREE.Vector3;
-      distance: number;
-      color: string;
-    }>;
-  }>;
-}
-
 const masterJson: MasterJson = {
-  fileName: "",
-  garmentName: "",
-  levels: [],
+  fileName: null,
+  body: {
+    bodyName: null,
+    levels: [],
+  },
   bodyLevels: [],
-  landmarkPoints: [],
+  landmarks: [],
+  category: null,
+  date: null,
+  fitName: null,
+  subcategory: null,
+  tolerance: null,
+  version: null,
+  unit: null,
+  criticalMeasurement: null,
+  value: null,
+  trails: null,
+  garment: {
+    name: "",
+    levels: [],
+  },
 };
 let measure = false;
 (window as any).bodyUpload = (event: Event) => {
@@ -99,7 +97,6 @@ let measure = false;
     "body",
     (model: THREE.Object3D, LocalfileName: string) => {
       bodyModel = model;
-      fileName = LocalfileName;
     }
   );
 };
@@ -109,9 +106,11 @@ let measure = false;
     scene,
     "garment",
     (model: THREE.Object3D, LocalfileName: string) => {
-      gramentModel = model;
+      garmentModel = model;
       garmentName = LocalfileName;
-      masterJson.garmentName = LocalfileName;
+      if (masterJson.garment) {
+        masterJson.garment.name = garmentName;
+      }
     }
   );
 };
@@ -121,23 +120,32 @@ let measure = false;
   if (!file) return;
 
   try {
-    const text = await file.text();
-    const parsedJson = importMasterJson(text);
-    masterJson.fileName = parsedJson.fileName;
-    masterJson.bodyLevels = parsedJson.bodyLevels;
-    masterJson.landmarkPoints = parsedJson.landmarkPoints;
+    const parsedJson = await importMasterJsonFromFile(file);
+    console.log(parsedJson);
+    masterJson.fileName = parsedJson.fileName ?? null;
+    masterJson.bodyLevels = parsedJson.bodyLevels ?? [];
+    masterJson.landmarks = parsedJson.landmarks ?? [];
+
+    // Clear previous levels before pushing new ones
+    if (masterJson.body && Array.isArray(masterJson.body.levels)) {
+      masterJson.body.levels.length = 0;
+    } else if (masterJson.body) {
+      masterJson.body.levels = [];
+    }
 
     const landmarkTableHead = document.getElementById("landmarkTableHead");
     if (!landmarkTableHead) return;
-    parsedJson.bodyLevels.forEach((item) => {
+    landmarkTableHead.innerHTML = "";
+    parsedJson.bodyLevels?.forEach((item) => {
       const th = document.createElement("th");
       th.classList.add("text-left", "font-bold", "p-2");
-      th.innerText = item.toUpperCase();
+      th.innerText = item?.toUpperCase() || "none";
       landmarkTableHead.appendChild(th);
     });
     const measurementBody = document.getElementById("measurementBody");
     if (!measurementBody) return;
-    parsedJson.landmarkPoints.forEach((item) => {
+    measurementBody.innerHTML = "";
+    parsedJson.landmarks?.forEach((item) => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td class="p-2 font-medium">${item}</td>
@@ -145,25 +153,18 @@ let measure = false;
       measurementBody.appendChild(tr);
     });
 
-    // if (!bodyModel) {
-    //   return;
-    // }
-    parsedJson.levels.forEach((item) => {
+    parsedJson.body?.levels?.forEach((item) => {
+      if (!item?.intersectionPoints) return;
       const geometry = new THREE.BufferGeometry().setFromPoints(
-        item.intersectionPoints
+        item?.intersectionPoints
       );
       const material = new THREE.LineBasicMaterial({ color: 0x00ff00 });
       const line = new THREE.Line(geometry, material);
       scene.add(line);
-      const points: {
-        distance: number;
-        name: string;
-        bodyPoint: THREE.Vector3;
-        dressPoint: THREE.Vector3;
-        color: string;
-      }[] = [];
+      const points: Landmark[] = [];
 
-      item.points.forEach((point) => {
+      item.landmarks?.forEach((point) => {
+        if (!point || !point.point || !point.name || !point.color) return;
         const markerPoint = createPoint(point.color as ColorName);
         markerPoint.position.copy(point.point);
         scene.add(markerPoint);
@@ -171,16 +172,16 @@ let measure = false;
           name: point.name,
           distance: 0,
           color: point.color,
-          bodyPoint: point.point,
-          dressPoint: point.point,
+          point: point.point,
         });
       });
-      masterJson.levels.push({
-        name: item.name,
-        bodyIntersectionPoints: item.intersectionPoints,
-        garmentLandmark: points,
-        dressIntersectionPoints: [],
-      });
+      if (masterJson.body && Array.isArray(masterJson.body.levels)) {
+        masterJson.body.levels.push({
+          name: item.name,
+          intersectionPoints: item.intersectionPoints,
+          landmarks: points,
+        });
+      }
     });
   } catch (err: any) {
     console.error("Error parsing JSON:", err.message);
@@ -188,52 +189,68 @@ let measure = false;
 };
 
 (window as any).calculateMeasurement = () => {
-  if (!gramentModel || !bodyModel) return;
+  if (!garmentModel || !bodyModel) return;
 
-  masterJson.levels.forEach((item) => {
-    const points = item.bodyIntersectionPoints;
+  // Clear previous garment levels before pushing new ones
+  if (masterJson.garment && Array.isArray(masterJson.garment.levels)) {
+    masterJson.garment.levels.length = 0;
+  } else if (masterJson.garment) {
+    masterJson.garment.levels = [];
+  }
+
+  masterJson.body?.levels?.forEach((item) => {
+    if (!item || !item.intersectionPoints) return;
+    const points = item.intersectionPoints;
     const len = points.length;
+    if (len < 3) return;
 
     const idx1 = Math.floor(Math.random() * (len / 3));
     const idx2 = Math.floor(len / 3) + Math.floor(Math.random() * (len / 3));
     const idx3 =
       Math.floor((2 * len) / 3) + Math.floor(Math.random() * (len / 3));
-
     const garmentIntersectionPlane = createPlaneFromThreePoints(
-      item.bodyIntersectionPoints[idx1],
-      item.bodyIntersectionPoints[idx2],
-      item.bodyIntersectionPoints[idx3]
+      points[idx1],
+      points[idx2],
+      points[idx3]
     );
-    if (!gramentModel) return;
+    if (!garmentModel) return;
     const garmentIntersectionPoints = sortPointsNearestNeighbor(
       getModelPlaneIntersections(
-        gramentModel,
+        garmentModel,
         getPlaneFromMesh(garmentIntersectionPlane)
       )
     );
+    const landmarkPoints: Landmark[] = [];
 
-    item.dressIntersectionPoints = garmentIntersectionPoints;
-
-    item.garmentLandmark.forEach((point) => {
+    item.landmarks?.forEach((point) => {
+      if (!point || !point.point || !point.name || !point.color) return;
       let minDistance = Infinity;
       let nearestPoint: THREE.Vector3 | null = null;
-
       garmentIntersectionPoints.forEach((obj) => {
-        const distance = obj.distanceTo(point.bodyPoint);
+        const distance = obj.distanceTo(point.point!);
         if (distance < minDistance) {
           minDistance = distance;
           nearestPoint = obj.clone();
         }
       });
-
       if (!nearestPoint) return;
-      point.dressPoint = nearestPoint;
-      point.distance = minDistance * 100;
-
+      landmarkPoints.push({
+        name: point.name,
+        color: point.color,
+        point: nearestPoint,
+        distance: minDistance * 100,
+      });
       const markerPoint = createPoint(point.color as ColorName);
       markerPoint.position.copy(nearestPoint);
       scene.add(markerPoint);
     });
+    if (masterJson.garment && Array.isArray(masterJson.garment.levels)) {
+      masterJson.garment.levels.push({
+        intersectionPoints: garmentIntersectionPoints,
+        landmarks: landmarkPoints,
+        name: item.name,
+      });
+    }
     measure = true;
   });
 
@@ -241,28 +258,35 @@ let measure = false;
   if (!measurementBody) return;
 
   const rows: string[] = [];
-
   const distanceMatrix: number[][] = [];
 
-  masterJson.landmarkPoints.forEach((landmark, i) => {
+  (masterJson.landmarks ?? []).forEach((landmark, i) => {
     const rowDistances: number[] = [];
     let rowCells = "";
 
-    masterJson.bodyLevels.forEach((bodyLevel) => {
-      const level = masterJson.levels.find((lvl) => lvl.name === bodyLevel);
-      let distance = 0;
-
-      if (level) {
-        const point = level.garmentLandmark.find((pt) => pt.name === landmark);
-        if (point) distance = point.distance;
+    (masterJson.bodyLevels ?? []).forEach((bodyLevel) => {
+      if (!bodyLevel) {
+        rowCells += `<td class="p-2 text-center">0.00</td>`;
+        rowDistances.push(0);
+        return;
       }
-
+      const level = masterJson.garment?.levels?.find(
+        (lvl) => lvl?.name === bodyLevel
+      );
+      let distance = 0;
+      if (level) {
+        const point = level.landmarks?.find((pt) => pt?.name === landmark);
+        if (point && typeof point.distance === "number")
+          distance = point.distance;
+      }
       rowCells += `<td class="p-2 text-center">${distance.toFixed(2)}</td>`;
       rowDistances.push(distance);
     });
 
     distanceMatrix.push(rowDistances);
-    const rowHTML = `<tr><td class="p-2 font-medium">${landmark.toUpperCase()}</td>${rowCells}</tr>`;
+    const rowHTML = `<tr><td class="p-2 font-medium">${
+      landmark?.toUpperCase?.() ?? ""
+    }</td>${rowCells}</tr>`;
     rows.push(rowHTML);
   });
 
@@ -278,15 +302,15 @@ let measure = false;
     label: string,
     valueGetter: (stat: ReturnType<typeof getColumnStats>) => number
   ) => {
-    const cells = masterJson.bodyLevels.map((_, i) => {
+    const cells = (masterJson.bodyLevels ?? []).map((_, i) => {
       const stat = getColumnStats(i);
       return `<td class="p-2 text-center font-semibold">${valueGetter(
         stat
       ).toFixed(2)}</td>`;
     });
-    return `<tr class="bg-gray-100"><td class="p-2 font-bold">${label}</td>${cells.join(
-      ""
-    )}</tr>`;
+    return `<tr class="bg-gray-100"><td class="p-2 font-bold">${label}</td>${(
+      cells ?? []
+    ).join("")}</tr>`;
   };
 
   rows.push(buildStatRow("MAX", (s) => s.max));
@@ -300,9 +324,9 @@ function initTextInputs() {
     { id: "BodyX", model: () => bodyModel, axis: "x" },
     { id: "BodyY", model: () => bodyModel, axis: "y" },
     { id: "BodyZ", model: () => bodyModel, axis: "z" },
-    { id: "garmentX", model: () => gramentModel, axis: "x" },
-    { id: "garmentY", model: () => gramentModel, axis: "y" },
-    { id: "garmentZ", model: () => gramentModel, axis: "z" },
+    { id: "garmentX", model: () => garmentModel, axis: "x" },
+    { id: "garmentY", model: () => garmentModel, axis: "y" },
+    { id: "garmentZ", model: () => garmentModel, axis: "z" },
   ];
 
   inputs.forEach(({ id, model, axis }) => {
@@ -323,6 +347,7 @@ function initTextInputs() {
 
 window.addEventListener("DOMContentLoaded", initTextInputs);
 (window as any).saveJson = () => {
+  console.log(masterJson);
   if (!measure) return;
   const json = JSON.stringify(masterJson, null, 2);
   const blob = new Blob([json], { type: "application/json" });

@@ -1,10 +1,17 @@
 import { loadModel } from "../loadModel";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
+import { importMasterJson } from "./import-master-json";
 import { createPoint } from "../create-point";
+import type { ColorName } from "../constant/colors";
+import { retarget } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { createPlaneFromThreePoints } from "../create-plane";
+import { getModelPlaneIntersections } from "../model-intersector";
 import { getPlaneFromMesh } from "../planeFromMesh";
+import { sortPointsNearestNeighbor } from "../sort";
 import { intersectThreePlanes } from "../planes-intersection";
+import { alignMeshToXZPlane } from "../utils";
+import { OBJExporter } from "three/examples/jsm/Addons.js";
 
 export const scene: THREE.Scene = new THREE.Scene();
 scene.background = new THREE.Color(0xededed);
@@ -28,13 +35,22 @@ const controls: OrbitControls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-[1, 2, 3, 4].forEach((i) => {
-  const light = new THREE.DirectionalLight(0xffffff);
-  const x = i <= 2 ? 5 : -5;
-  const z = i % 2 === 1 ? 7.5 : -7.5;
-  light.position.set(x, 10, z);
-  scene.add(light);
-});
+
+const directionalLight1 = new THREE.DirectionalLight(0xffffff);
+directionalLight1.position.set(5, 10, 7.5);
+scene.add(directionalLight1);
+
+const directionalLight2 = new THREE.DirectionalLight(0xffffff);
+directionalLight2.position.set(5, 10, -7.5);
+scene.add(directionalLight2);
+
+const directionalLight3 = new THREE.DirectionalLight(0xffffff);
+directionalLight3.position.set(-5, 10, 7.5);
+scene.add(directionalLight3);
+
+const directionalLight4 = new THREE.DirectionalLight(0xffffff);
+directionalLight4.position.set(-5, 10, -7.5);
+scene.add(directionalLight4);
 
 function animate(): void {
   requestAnimationFrame(animate);
@@ -43,19 +59,47 @@ function animate(): void {
 }
 animate();
 
-const axesHelper = new THREE.AxesHelper(100);
+const axesHelper: THREE.AxesHelper = new THREE.AxesHelper(100);
+axesHelper.position.set(0, 0, 0);
 scene.add(axesHelper);
 
-const modelGroup = new THREE.Group();
-scene.add(modelGroup);
-
 let bodyModel: THREE.Object3D | null = null;
+let garmentModel: THREE.Object3D | null = null;
+let fileName: string;
+let garmentName: string;
 let sagittalPlane: THREE.Mesh | null = null;
 let coronalPlane: THREE.Mesh | null = null;
 let transversePlane: THREE.Mesh | null = null;
+const modelGroup = new THREE.Group();
+scene.add(modelGroup);
 
-const clickPoints: THREE.Vector3[] = [];
-let currentPlaneToCreate: "sagittal" | "coronal" | "transverse" | null = null;
+interface MasterJson {
+  fileName: string;
+  garmentName: string;
+  bodyLevels: string[];
+  landmarkPoints: string[];
+  levels: Array<{
+    name: string;
+    bodyIntersectionPoints: THREE.Vector3[];
+    dressIntersectionPoints: THREE.Vector3[];
+    points: Array<{
+      name: string;
+      bodyPoint: THREE.Vector3;
+      dressPoint: THREE.Vector3;
+      distance: number;
+      color: string;
+    }>;
+  }>;
+}
+
+const masterJson: MasterJson = {
+  fileName: "",
+  garmentName: "",
+  levels: [],
+  bodyLevels: [],
+  landmarkPoints: [],
+};
+let measure = false;
 
 function setDoubleSide(model: THREE.Object3D) {
   model.traverse((child) => {
@@ -77,29 +121,61 @@ function setDoubleSide(model: THREE.Object3D) {
     (model: THREE.Object3D, LocalfileName: string) => {
       bodyModel = model;
       setDoubleSide(bodyModel);
+      fileName = LocalfileName;
       scene.remove(bodyModel);
       modelGroup.add(bodyModel);
     }
   );
 };
 
-function onClick(event: MouseEvent) {
-  if (!currentPlaneToCreate || !bodyModel) return;
-
-  const mouse = new THREE.Vector2(
-    (event.clientX / window.innerWidth) * 2 - 1,
-    -(event.clientY / window.innerHeight) * 2 + 1
+(window as any).garmentUpload = (event: Event) => {
+  loadModel(
+    event,
+    scene,
+    "garment",
+    (model: THREE.Object3D, localGarmentName: string) => {
+      garmentModel = model;
+      setDoubleSide(garmentModel);
+      garmentName = localGarmentName;
+      scene.remove(garmentModel);
+      modelGroup.add(garmentModel);
+    }
   );
-  const raycaster = new THREE.Raycaster();
+};
+
+const pivotHelper = new THREE.AxesHelper(10);
+modelGroup.add(pivotHelper);
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const clickPoints: THREE.Vector3[] = [];
+const points: { name: string; type: string; point: THREE.Mesh }[] = [];
+let currentPlaneToCreate: "sagittal" | "coronal" | "transverse" | null = null;
+
+function onClick(event: { clientX: number; clientY: number }) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
   raycaster.setFromCamera(mouse, camera);
 
-  const intersect = raycaster.intersectObject(bodyModel, true);
-  if (!intersect.length) return;
-  const point = intersect[0].point.clone();
+  if (!bodyModel) return;
+
+  const getIntersection = (model: THREE.Object3D) => {
+    const intersects = raycaster.intersectObject(model, true);
+    return intersects.length ? intersects[0].point.clone() : null;
+  };
+
+  if (!currentPlaneToCreate) {
+    alert("Select which plane to create first.");
+    return;
+  }
+
+  const point = getIntersection(bodyModel);
+  if (!point) return;
 
   const marker = createPoint("red");
   marker.position.copy(point);
   scene.add(marker);
+  points.push({ name: "temp points", type: "temp", point: marker });
   clickPoints.push(point);
 
   if (clickPoints.length === 3) {
@@ -110,221 +186,155 @@ function onClick(event: MouseEvent) {
     );
     scene.add(planeMesh);
 
-    if (currentPlaneToCreate === "sagittal") sagittalPlane = planeMesh;
-    if (currentPlaneToCreate === "coronal") coronalPlane = planeMesh;
-    if (currentPlaneToCreate === "transverse") transversePlane = planeMesh;
+    if (currentPlaneToCreate === "sagittal") {
+      sagittalPlane = planeMesh;
+    } else if (currentPlaneToCreate === "coronal") {
+      coronalPlane = planeMesh;
+    } else if (currentPlaneToCreate === "transverse") {
+      transversePlane = planeMesh;
+    }
 
     clickPoints.length = 0;
     currentPlaneToCreate = null;
   }
 }
-window.addEventListener("dblclick", onClick);
 
-function startPlaneCreation(type: "sagittal" | "coronal" | "transverse") {
-  currentPlaneToCreate = type;
+function startPlaneCreation(planeType: "sagittal" | "coronal" | "transverse") {
+  currentPlaneToCreate = planeType;
   clickPoints.length = 0;
-  alert(`Click 3 points on the body to define the ${type} plane.`);
+
+  points.filter((p) => p.type === "temp").forEach((p) => scene.remove(p.point));
+  const nonTempPoints = points.filter((p) => p.type !== "temp");
+  points.length = 0;
+  points.push(...nonTempPoints);
+
+  if (planeType === "sagittal" && sagittalPlane) scene.remove(sagittalPlane);
+  if (planeType === "coronal" && coronalPlane) scene.remove(coronalPlane);
+  if (planeType === "transverse" && transversePlane)
+    scene.remove(transversePlane);
+
+  alert(`Click 3 points on the body to define the ${planeType} plane.`);
 }
 
 (window as any).createSaPlane = () => startPlaneCreation("sagittal");
 (window as any).createCrPlane = () => startPlaneCreation("coronal");
 (window as any).createTrPlane = () => startPlaneCreation("transverse");
 
-// New unified alignment function
-function alignAndPivot() {
-  if (!sagittalPlane || !coronalPlane || !transversePlane || !bodyModel) {
-    alert("Please define all three planes and load a model first.");
+(window as any).alignBody = () => {
+  if (!sagittalPlane || !coronalPlane || !transversePlane) {
+    alert("Please define all three planes first.");
     return;
   }
 
-  const sagittal = getPlaneFromMesh(sagittalPlane);
-  const coronal = getPlaneFromMesh(coronalPlane);
-  const transverse = getPlaneFromMesh(transversePlane);
+  // Get the planes
+  const sagittalPlaneGeometry = getPlaneFromMesh(sagittalPlane);
+  const coronalPlaneGeometry = getPlaneFromMesh(coronalPlane);
+  const transversePlaneGeometry = getPlaneFromMesh(transversePlane);
 
-  const intersectionPoint = intersectThreePlanes(sagittal, coronal, transverse);
-  if (!intersectionPoint) {
-    alert("Planes do not intersect properly.");
-    return;
-  }
-
-  // Build orthonormal basis
-  const xAxis = sagittal.normal.clone().normalize();
-  const yAxisUn = transverse.normal.clone().normalize();
-  const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxisUn).normalize();
-  const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
-
-  const rotMat = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-  const rotQuat = new THREE.Quaternion().setFromRotationMatrix(
-    rotMat.clone().invert()
+  // Find the intersection point of the three planes
+  const intersectionPoint = intersectThreePlanes(
+    sagittalPlaneGeometry,
+    transversePlaneGeometry,
+    coronalPlaneGeometry
   );
 
-  // Translate pivot to origin
-  const invWorld = new THREE.Matrix4().copy(modelGroup.matrixWorld).invert();
-  const localPivot = intersectionPoint.clone().applyMatrix4(invWorld);
-  bodyModel.position.sub(localPivot);
-
-  // Apply rotation
-  modelGroup.quaternion.premultiply(rotQuat);
-
-  // Cleanup
-  camera.position.set(0, 0, 10);
-  scene.remove(sagittalPlane, coronalPlane, transversePlane);
-  sagittalPlane = coronalPlane = transversePlane = null;
-}
-(window as any).alignBody = alignAndPivot;
-
-(window as any).rotateX180 = () => {
-  modelGroup.rotation.x += Math.PI;
-};
-(window as any).rotateY180 = () => {
-  modelGroup.rotation.y += Math.PI;
-};
-(window as any).rotateZ180 = () => {
-  modelGroup.rotation.z += Math.PI;
-};
-function saveAlignedOBJ() {
-  if (!bodyModel) {
-    alert("Please load a model first.");
+  if (!intersectionPoint) {
+    alert("Could not find intersection point of the three planes.");
     return;
   }
 
-  const objContent = generateOBJContent(bodyModel, modelGroup);
+  // Calculate the new basis vectors
+  const newX = sagittalPlaneGeometry.normal.clone().normalize();
+  const newY = transversePlaneGeometry.normal.clone().normalize();
+  const newZ = coronalPlaneGeometry.normal.clone().normalize();
 
-  const blob = new Blob([objContent], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "aligned_model.obj";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
+  // Ensure the basis is orthogonal and right-handed
+  const correctedY = newY.clone().projectOnPlane(newX).normalize();
+  const correctedZ = newX.clone().cross(correctedY).normalize();
 
-function generateOBJContent(
-  model: THREE.Object3D,
-  parentGroup: THREE.Group
-): string {
-  let objContent = "# Aligned OBJ file\n";
-  let vertexOffset = 0;
-  let normalOffset = 0;
-  let uvOffset = 0;
+  // Create the rotation matrix
+  const rotationMatrix = new THREE.Matrix4().makeBasis(
+    newX,
+    correctedY,
+    correctedZ
+  );
+  const quaternion = new THREE.Quaternion().setFromRotationMatrix(
+    rotationMatrix
+  );
 
-  const worldMatrix = new THREE.Matrix4();
-  parentGroup.updateMatrixWorld(true);
+  // Calculate the world position of the intersection point
+  const worldIntersection = intersectionPoint.clone();
 
-  function processObject(obj: THREE.Object3D) {
-    if (obj instanceof THREE.Mesh && obj.geometry) {
-      const geometry = obj.geometry;
+  // Apply the transformation
+  modelGroup.position.copy(worldIntersection);
+  modelGroup.quaternion.copy(quaternion);
+  modelGroup.position.sub(
+    worldIntersection.clone().applyQuaternion(quaternion).sub(worldIntersection)
+  );
 
-      obj.updateMatrixWorld(true);
-      const objWorldMatrix = obj.matrixWorld.clone();
+  // Clean up
+  scene.remove(sagittalPlane);
+  scene.remove(coronalPlane);
+  scene.remove(transversePlane);
+  sagittalPlane = null;
+  coronalPlane = null;
+  transversePlane = null;
+  points.filter((p) => p.type === "temp").forEach((p) => scene.remove(p.point));
 
-      const geo = geometry.clone();
-      geo.applyMatrix4(objWorldMatrix);
+  // Reset camera
+  camera.position.set(0, 0, 10);
+  camera.lookAt(0, 0, 0);
+  controls.update();
+};
 
-      const vertices = geo.attributes.position;
-      const normals = geo.attributes.normal;
-      const uvs = geo.attributes.uv;
+(window as any).rotateX180 = () => {
+  if (modelGroup) {
+    modelGroup.rotateX(Math.PI);
+  }
+};
 
-      if (vertices) {
-        for (let i = 0; i < vertices.count; i++) {
-          const x = vertices.getX(i);
-          const y = vertices.getY(i);
-          const z = vertices.getZ(i);
-          objContent += `v ${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)}\n`;
-        }
-      }
+(window as any).rotateY180 = () => {
+  if (modelGroup) {
+    modelGroup.rotateY(Math.PI);
+  }
+};
 
-      if (normals) {
-        for (let i = 0; i < normals.count; i++) {
-          const x = normals.getX(i);
-          const y = normals.getY(i);
-          const z = normals.getZ(i);
-          objContent += `vn ${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)}\n`;
-        }
-      }
+(window as any).rotateZ180 = () => {
+  if (modelGroup) {
+    modelGroup.rotateZ(Math.PI);
+  }
+};
 
-      if (uvs) {
-        for (let i = 0; i < uvs.count; i++) {
-          const u = uvs.getX(i);
-          const v = uvs.getY(i);
-          objContent += `vt ${u.toFixed(6)} ${v.toFixed(6)}\n`;
-        }
-      }
-
-      objContent += `o ${obj.name || "Object"}\n`;
-
-      if (geo.index) {
-        const indices = geo.index;
-        for (let i = 0; i < indices.count; i += 3) {
-          const a = indices.getX(i) + vertexOffset + 1;
-          const b = indices.getX(i + 1) + vertexOffset + 1;
-          const c = indices.getX(i + 2) + vertexOffset + 1;
-
-          if (normals && uvs) {
-            const na = indices.getX(i) + normalOffset + 1;
-            const nb = indices.getX(i + 1) + normalOffset + 1;
-            const nc = indices.getX(i + 2) + normalOffset + 1;
-            const ua = indices.getX(i) + uvOffset + 1;
-            const ub = indices.getX(i + 1) + uvOffset + 1;
-            const uc = indices.getX(i + 2) + uvOffset + 1;
-            objContent += `f ${a}/${ua}/${na} ${b}/${ub}/${nb} ${c}/${uc}/${nc}\n`;
-          } else if (normals) {
-            const na = indices.getX(i) + normalOffset + 1;
-            const nb = indices.getX(i + 1) + normalOffset + 1;
-            const nc = indices.getX(i + 2) + normalOffset + 1;
-            objContent += `f ${a}//${na} ${b}//${nb} ${c}//${nc}\n`;
-          } else if (uvs) {
-            const ua = indices.getX(i) + uvOffset + 1;
-            const ub = indices.getX(i + 1) + uvOffset + 1;
-            const uc = indices.getX(i + 2) + uvOffset + 1;
-            objContent += `f ${a}/${ua} ${b}/${ub} ${c}/${uc}\n`;
-          } else {
-            objContent += `f ${a} ${b} ${c}\n`;
-          }
-        }
-      } else {
-        const vertexCount = vertices.count;
-        for (let i = 0; i < vertexCount; i += 3) {
-          const a = i + vertexOffset + 1;
-          const b = i + 1 + vertexOffset + 1;
-          const c = i + 2 + vertexOffset + 1;
-
-          if (normals && uvs) {
-            const na = i + normalOffset + 1;
-            const nb = i + 1 + normalOffset + 1;
-            const nc = i + 2 + normalOffset + 1;
-            const ua = i + uvOffset + 1;
-            const ub = i + 1 + uvOffset + 1;
-            const uc = i + 2 + uvOffset + 1;
-            objContent += `f ${a}/${ua}/${na} ${b}/${ub}/${nb} ${c}/${uc}/${nc}\n`;
-          } else if (normals) {
-            const na = i + normalOffset + 1;
-            const nb = i + 1 + normalOffset + 1;
-            const nc = i + 2 + normalOffset + 1;
-            objContent += `f ${a}//${na} ${b}//${nb} ${c}//${nc}\n`;
-          } else if (uvs) {
-            const ua = i + uvOffset + 1;
-            const ub = i + 1 + uvOffset + 1;
-            const uc = i + 2 + uvOffset + 1;
-            objContent += `f ${a}/${ua} ${b}/${ub} ${c}/${uc}\n`;
-          } else {
-            objContent += `f ${a} ${b} ${c}\n`;
-          }
-        }
-      }
-
-      if (vertices) vertexOffset += vertices.count;
-      if (normals) normalOffset += normals.count;
-      if (uvs) uvOffset += uvs.count;
-    }
-
-    obj.children.forEach((child) => processObject(child));
+(window as any).saveAlignedModel = () => {
+  if (!bodyModel) {
+    alert("No body model to export");
+    return;
   }
 
-  processObject(model);
-  return objContent;
-}
+  // Clone the model to avoid affecting the scene
+  const modelToExport = bodyModel.clone();
+  modelToExport.position.copy(modelGroup.position);
+  modelToExport.quaternion.copy(modelGroup.quaternion);
+  modelToExport.scale.copy(modelGroup.scale);
 
-(window as any).saveAlignedOBJ = saveAlignedOBJ;
+  // Export as OBJ
+  const objExporter = new OBJExporter();
+  const objString = objExporter.parse(modelToExport);
+
+  // Create download links
+  const objBlob = new Blob([objString], { type: "text/plain" });
+  const objUrl = URL.createObjectURL(objBlob);
+
+  // Create download elements
+  const objLink = document.createElement("a");
+  objLink.href = objUrl;
+  objLink.download = "aligned_model.obj";
+  document.body.appendChild(objLink);
+  objLink.click();
+  document.body.removeChild(objLink);
+
+  // Clean up
+  URL.revokeObjectURL(objUrl);
+};
+
+window.addEventListener("dblclick", onClick);

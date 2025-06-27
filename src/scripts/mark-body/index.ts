@@ -10,6 +10,7 @@ import { sortPointsNearestNeighbor } from "../sort";
 import { landMarks } from "../landmarks";
 import Chart from "chart.js/auto";
 import { DragControls } from "three/addons/controls/DragControls.js";
+import type { MasterJson } from "../type";
 
 // Types
 interface Level {
@@ -30,23 +31,6 @@ interface LevelData {
     name: string;
     point: THREE.Vector3;
     color: string;
-  }>;
-}
-
-interface MasterJson {
-  fileName: string;
-  unit: number;
-  bodyLevels: string[];
-  landmarkPoints: string[];
-  levels: Array<{
-    name: string;
-    intersectionPoints: THREE.Vector3[];
-    planeMesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
-    points: Array<{
-      name: string;
-      point: THREE.Vector3;
-      color: string;
-    }>;
   }>;
 }
 
@@ -146,9 +130,22 @@ class AppState {
   public masterJson: MasterJson = {
     fileName: "",
     unit: 1,
-    levels: [],
+    body: {
+      bodyName: "",
+      levels: [],
+    },
     bodyLevels: [],
-    landmarkPoints: [],
+    landmarks: [],
+    category: null,
+    date: null,
+    fitName: null,
+    subcategory: null,
+    tolerance: null,
+    version: null,
+    criticalMeasurement: null,
+    value: null,
+    trails: null,
+    garment: null,
   };
   public landMarkPoints: {
     level: string;
@@ -172,12 +169,11 @@ class AppState {
 
   public addLevel(levelData: LevelData): void {
     this.localLevelData.push(levelData);
-    this.masterJson.bodyLevels.push(levelData.name);
-    this.masterJson.levels.push({
+    this.masterJson.bodyLevels?.push(levelData.name);
+    this.masterJson.body?.levels?.push({
       name: levelData.name,
-      points: levelData.points,
-      planeMesh: levelData.planeMesh,
       intersectionPoints: levelData.intersectionPoints,
+      landmarks: levelData.points,
     });
   }
 
@@ -666,7 +662,7 @@ class EventHandlers {
 
   const landmarkName = landmarkSelect.value;
   const levelData = state.getLevelByName(state.selectedLevel);
-  const landmarkData = state.masterJson.landmarkPoints;
+  const landmarkData = state.masterJson.landmarks;
 
   if (!levelData) {
     console.error("Level data not found");
@@ -700,8 +696,8 @@ class EventHandlers {
   // Add to level data only (this automatically updates masterJson since they share the same reference)
   levelData.points.push(landmarkPoint);
 
-  if (!landmarkData.includes(landmarkName)) {
-    landmarkData.push(landmarkName);
+  if (!landmarkData?.includes(landmarkName)) {
+    landmarkData?.push(landmarkName);
   }
   state.landMarkPoints.push({
     landmark: landmarkName,
@@ -779,12 +775,14 @@ class EventHandlers {
   const undoItem = state.landMarkPoints[state.landMarkPoints.length - 1];
   console.log(undoItem);
 
-  const level = state.masterJson.levels.find((l) => l.name === undoItem.level);
+  const levelData = state.getLevelByName(undoItem.level);
 
-  if (level) {
-    const index = level.points.findIndex((i) => i.name === undoItem.landmark);
+  if (levelData) {
+    const index = levelData.points.findIndex(
+      (i) => i.name === undoItem.landmark
+    );
     if (index !== -1) {
-      level.points.splice(index, 1);
+      levelData.points.splice(index, 1);
     }
   }
 
