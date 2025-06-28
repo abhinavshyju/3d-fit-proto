@@ -11,7 +11,7 @@ import { landMarks } from "../landmarks";
 import Chart from "chart.js/auto";
 import { DragControls } from "three/addons/controls/DragControls.js";
 import type { MasterJson } from "../type";
-
+let value = 1;
 // Types
 interface Level {
   name: string;
@@ -63,22 +63,9 @@ controls.enableDamping = true;
 
 // Lighting setup
 const setupLighting = () => {
-  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-
-  const lightPositions = [
-    [5, 10, 7.5],
-    [5, 10, -7.5],
-    [-5, 10, 7.5],
-    [-5, 10, -7.5],
-  ];
-
-  lightPositions.forEach(([x, y, z]) => {
-    const light = new THREE.DirectionalLight(0xffffff);
-    light.position.set(x, y, z);
-    scene.add(light);
-  });
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+  scene.add(ambientLight);
 };
-
 // Animation loop
 const animate = (): void => {
   requestAnimationFrame(animate);
@@ -465,6 +452,7 @@ class EventHandlers {
         "unitMeasurementInput"
       ) as HTMLInputElement;
       unitMeasurementInput.value = (distance * 100).toString();
+      value = distance * 100;
       state.tempPoints.forEach((point) => scene.remove(point));
       state.reset();
     }
@@ -761,7 +749,8 @@ class EventHandlers {
   );
 
   if (!input?.value) return;
-  state.masterJson.unit = Number(input?.value);
+  const unit = Number(input?.value) / value;
+  state.masterJson.unit = Number(unit);
   DOMUtils.toggleDialog("unitMeasurementContainer", false);
   input.value = "";
 };

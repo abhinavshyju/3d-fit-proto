@@ -2,201 +2,479 @@
 import Layout from "@/layouts/main.astro";
 ---
 
-<Layout title="Mark Body">
-  <div class="min-h-screen bg-gray-50 p-6">
+<Layout title="Body-Garment Measurement">
+  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-2">
     <div class="mx-auto">
-      <div class="grid grid-cols-1 lg:grid-cols-[400px_1fr_1fr] gap-6">
-        <!-- Left Panel -->
-        <div class="space-y-4">
-          <div class="space-y-2">
-            <h1>Upload Body</h1>
-            <input
-              type="file"
-              onchange="bodyUpload(event)"
-              multiple
-              placeholder="Upload Body"
-              class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
-            />
-          </div>
+      <!-- Header -->
+      <div class="text-center mb-4">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">
+          Body-Garment Measurement
+        </h1>
+        <p class="text-gray-600">
+          Upload your 3D models and calculate precise measurements
+        </p>
+      </div>
 
-          <div class="bg-white rounded-lg p-4 shadow">
-            <div class="space-y-2 text-sm">
-              <div><strong>TYPE:</strong> Human body / Dressform</div>
-              <div><strong>Name:</strong> Alvaform US missey</div>
-              <div><strong>Size:</strong> 10</div>
-              <div>
-                <strong>Description:</strong> Standard measure of US based on size
-                survey 2024
+      <div class="grid grid-cols-1 xl:grid-cols-[400px_600px_1fr] gap-2">
+        <!-- Left Panel - Upload & Controls -->
+        <div class="space-y-6">
+          <!-- File Upload Section -->
+          <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h2
+              class="text-xl font-semibold text-gray-800 mb-4 flex items-center"
+            >
+              <svg
+                class="w-5 h-5 mr-2 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                ></path>
+              </svg>
+              File Upload
+            </h2>
+
+            <div class="space-y-4">
+              <!-- Body Upload -->
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700"
+                  >Body Model</label
+                >
+                <div class="relative">
+                  <input
+                    type="file"
+                    onchange="bodyUpload(event)"
+                    multiple
+                    accept=".obj,.gltf,.glb,.fbx,.stl,.mtl,.png"
+                    class="hidden"
+                    id="bodyUpload"
+                  />
+                  <label
+                    for="bodyUpload"
+                    class="flex items-center justify-center w-full h-12 px-4 transition bg-white border-2 border-dashed border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
+                  >
+                    <span class="flex items-center space-x-2">
+                      <svg
+                        class="w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      <span class="font-medium text-gray-600"
+                        >Choose body files</span
+                      >
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Landmarks Upload -->
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700"
+                  >Landmarks Data</label
+                >
+                <div class="relative">
+                  <input
+                    type="file"
+                    onchange="jsomUpload(event)"
+                    accept=".json"
+                    class="hidden"
+                    id="landmarksUpload"
+                  />
+                  <label
+                    for="landmarksUpload"
+                    class="flex items-center justify-center w-full h-12 px-4 transition bg-white border-2 border-dashed border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
+                  >
+                    <span class="flex items-center space-x-2">
+                      <svg
+                        class="w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      <span class="font-medium text-gray-600"
+                        >Choose landmarks JSON</span
+                      >
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Garment Upload -->
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700"
+                  >Garment Model</label
+                >
+                <div class="relative">
+                  <input
+                    type="file"
+                    onchange="garmentUpload(event)"
+                    multiple
+                    accept=".obj,.gltf,.glb,.fbx,.stl,.mtl,.png"
+                    class="hidden"
+                    id="garmentUpload"
+                  />
+                  <label
+                    for="garmentUpload"
+                    class="flex items-center justify-center w-full h-12 px-4 transition bg-white border-2 border-dashed border-gray-300 rounded-lg appearance-none cursor-pointer hover:border-blue-400 hover:bg-blue-50 focus:outline-none"
+                  >
+                    <span class="flex items-center space-x-2">
+                      <svg
+                        class="w-5 h-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                      </svg>
+                      <span class="font-medium text-gray-600"
+                        >Choose garment files</span
+                      >
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
-          <div class="space-y-2">
-            <h1>Upload Landmarks</h1>
-            <input
-              type="file"
-              onchange="jsomUpload(event)"
-              class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
-            />
-          </div>
-          <div class="space-y-2">
-            <h1>Upload Garment</h1>
-            <input
-              onchange="garmentUpload(event)"
-              type="file"
-              multiple
-              class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
-            />
-          </div>
 
+          <!-- Action Buttons -->
           <div class="space-y-3">
-            <div>
-              <label for="buyer" class="block text-sm font-medium">Buyer:</label
+            <button
+              onclick="calculateMeasurement()"
+              class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-[1.02] shadow-lg"
+            >
+              <svg
+                class="w-5 h-5 inline mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-              <input id="buyer" class="mt-1 p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label for="styleNo" class="block text-sm font-medium"
-                >Style no:</label
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                ></path>
+              </svg>
+              Calculate Measurements
+            </button>
+
+            <button
+              onclick="calculateMeasurement()"
+              class="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-[1.02] shadow-lg"
+            >
+              <svg
+                class="w-5 h-5 inline mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-              <input id="styleNo" class="mt-1 p-2 border rounded w-full" />
-            </div>
-            <div>
-              <label for="desc" class="block text-sm font-medium">Desc:</label>
-              <input id="desc" class="mt-1 p-2 border rounded w-full" />
-            </div>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                ></path>
+              </svg>
+              Edit JSON
+            </button>
           </div>
 
-          <button
-            onclick="calculateMeasurement()"
-            class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
-            >Calculate Body-Garment measurements</button
-          >
+          <!-- Position Controls -->
+          <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+            <h3
+              class="text-lg font-semibold text-gray-800 mb-4 flex items-center"
+            >
+              <svg
+                class="w-5 h-5 mr-2 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17v4a2 2 0 002 2h4M15 7l3-3m0 0l-3-3m3 3H9"
+                ></path>
+              </svg>
+              Position Controls
+            </h3>
+
+            <div class="grid grid-cols-2 gap-6">
+              <!-- Body Controls -->
+              <div class="space-y-3">
+                <h4
+                  class="font-medium text-gray-700 text-sm uppercase tracking-wide"
+                >
+                  Body Position
+                </h4>
+                <div class="space-y-3">
+                  <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-600 w-8"
+                      >X:</label
+                    >
+                    <input
+                      type="number"
+                      id="BodyX"
+                      min="-10"
+                      max="10"
+                      step="0.001"
+                      value="0"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <span
+                      id="BodyXVal"
+                      class="text-sm text-gray-500 w-12 text-right">0</span
+                    >
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-600 w-8"
+                      >Y:</label
+                    >
+                    <input
+                      type="number"
+                      id="BodyY"
+                      min="-10"
+                      max="10"
+                      step="0.001"
+                      value="0"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <span
+                      id="BodyYVal"
+                      class="text-sm text-gray-500 w-12 text-right">0</span
+                    >
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-600 w-8"
+                      >Z:</label
+                    >
+                    <input
+                      type="number"
+                      id="BodyZ"
+                      min="-10"
+                      max="10"
+                      step="0.001"
+                      value="0"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <span
+                      id="BodyZVal"
+                      class="text-sm text-gray-500 w-12 text-right">0</span
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Garment Controls -->
+              <div class="space-y-3">
+                <h4
+                  class="font-medium text-gray-700 text-sm uppercase tracking-wide"
+                >
+                  Garment Position
+                </h4>
+                <div class="space-y-3">
+                  <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-600 w-8"
+                      >X:</label
+                    >
+                    <input
+                      type="number"
+                      id="garmentX"
+                      min="-10"
+                      max="10"
+                      step="0.001"
+                      value="0"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <span
+                      id="garmentXVal"
+                      class="text-sm text-gray-500 w-12 text-right">0</span
+                    >
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-600 w-8"
+                      >Y:</label
+                    >
+                    <input
+                      type="number"
+                      id="garmentY"
+                      min="-10"
+                      max="10"
+                      step="0.001"
+                      value="0"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <span
+                      id="garmentYVal"
+                      class="text-sm text-gray-500 w-12 text-right">0</span
+                    >
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-600 w-8"
+                      >Z:</label
+                    >
+                    <input
+                      type="number"
+                      id="garmentZ"
+                      min="-10"
+                      max="10"
+                      step="0.001"
+                      value="0"
+                      class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <span
+                      id="garmentZVal"
+                      class="text-sm text-gray-500 w-12 text-right">0</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Center Panel -->
-        <div class="flex flex-col justify-center items-center">
-          <h1 class="text-xl font-bold text-center mb-2">
-            Body-Garment measurement
-          </h1>
+        <!-- Center Panel - 3D Viewport -->
+        <div class="flex flex-col items-center">
           <div
-            class="bg-gray-200 rounded-lg h-[600px] w-[540px] flex items-center justify-center text-center p-4 text-gray-500"
-            id="viewPort"
+            class="bg-white rounded-xl shadow-lg p-4 border border-gray-100 w-full"
           >
-          </div>
-          <div class="grid grid-cols-2 w-full mt-1">
-            <div id="controls">
-              <label>
-                Body X:
-                <input
-                  type="number"
-                  id="BodyX"
-                  min="-10"
-                  max="10"
-                  step="0.001"
-                  value="0"
-                  class="w-20 border rounded p-1"
-                />
-                <span id="BodyXVal">0</span>
-              </label>
-              <br />
-              <label>
-                Body Y:
-                <input
-                  type="number"
-                  id="BodyY"
-                  min="-10"
-                  max="10"
-                  step="0.001"
-                  value="0"
-                  class="w-20 border rounded p-1"
-                />
-                <span id="BodyYVal">0</span>
-              </label>
-              <br />
-              <label>
-                Body Z:
-                <input
-                  type="number"
-                  id="BodyZ"
-                  min="-10"
-                  max="10"
-                  step="0.001"
-                  value="0"
-                  class="w-20 border rounded p-1"
-                />
-                <span id="BodyZVal">0</span>
-              </label>
-            </div>
-            <div id="controls">
-              <label>
-                Garment X:
-                <input
-                  type="number"
-                  id="garmentX"
-                  min="-10"
-                  max="10"
-                  step="0.001"
-                  value="0"
-                  class="w-20 border rounded p-1"
-                />
-                <span id="garmentXVal">0</span>
-              </label>
-              <br />
-              <label>
-                Garment Y:
-                <input
-                  type="number"
-                  id="garmentY"
-                  min="-10"
-                  max="10"
-                  step="0.001"
-                  value="0"
-                  class="w-20 border rounded p-1"
-                />
-                <span id="garmentYVal">0</span>
-              </label>
-              <br />
-              <label>
-                Garment Z:
-                <input
-                  type="number"
-                  id="garmentZ"
-                  min="-10"
-                  max="10"
-                  step="0.001"
-                  value="0"
-                  class="w-20 border rounded p-1"
-                />
-                <span id="garmentZVal">0</span>
-              </label>
+            <h2
+              class="text-xl font-semibold text-gray-800 mb-4 text-center flex items-center justify-center"
+            >
+              <svg
+                class="w-6 h-6 mr-2 text-purple-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                ></path>
+              </svg>
+              3D Viewport
+            </h2>
+            <div
+              class="bg-[#303030] rounded-lg h-[600px] w-full flex items-center justify-center text-center p-4 border-2 border-dashed border-gray-300"
+              id="viewPort"
+            >
             </div>
           </div>
         </div>
 
-        <!-- Right Panel -->
-        <div class="space-y-4">
-          <div class="bg-white rounded-lg shadow">
-            <div class="p-4 border-b font-semibold text-lg">Measurements</div>
-            <div class="p-4 overflow-x-auto">
-              <table class="min-w-full table-auto text-sm">
-                <thead>
-                  <tr class="bg-gray-100" id="landmarkTableHead">
-                    <th class="text-left font-bold p-2">Landmarks</th>
-                  </tr>
-                </thead>
-                <tbody id="measurementBody"></tbody>
-              </table>
+        <!-- Right Panel - Measurements -->
+        <div class="space-y-6">
+          <div
+            class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden"
+          >
+            <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
+              <h2 class="text-xl font-semibold text-white flex items-center">
+                <svg
+                  class="w-5 h-5 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  ></path>
+                </svg>
+                Measurements
+              </h2>
+            </div>
+            <div class="p-6">
+              <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr class="bg-gray-50" id="landmarkTableHead">
+                      <th
+                        class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >Landmarks</th
+                      >
+                    </tr>
+                  </thead>
+                  <tbody
+                    id="measurementBody"
+                    class="bg-white divide-y divide-gray-200"
+                  >
+                    <tr class="text-center py-8">
+                      <td class="px-4 py-8 text-gray-500">
+                        <svg
+                          class="w-8 h-8 mx-auto mb-2 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                          ></path>
+                        </svg>
+                        <p class="text-sm">No measurements yet</p>
+                        <p class="text-xs text-gray-400">
+                          Calculate measurements to see results
+                        </p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
           <button
             onclick="saveJson()"
-            class="w-full bg-gray-300 hover:bg-gray-400 text-black p-2 rounded"
-            >Save Body-Garment measurements</button
+            class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-[1.02] shadow-lg flex items-center justify-center"
           >
+            <svg
+              class="w-5 h-5 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+              ></path>
+            </svg>
+            Save Measurements
+          </button>
         </div>
       </div>
     </div>
   </div>
 </Layout>
+
 <script src="../scripts/measure-relationship/index.ts"></script>

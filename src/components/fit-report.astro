@@ -143,6 +143,9 @@ import LevelReport from "./level-report.astro";
   }
 
   let loaded = false;
+  let totalPass = 0;
+  let totalFail = 0;
+  let allVariations: { landmark: string; difference: number }[] = []; // { landmark, difference }
 
   // Type-safe null check helpers
   function isNotNull<T>(value: T | null | undefined): value is T {
@@ -338,7 +341,46 @@ import LevelReport from "./level-report.astro";
         const bgColor = result === "Pass" ? "bg-green-100" : "bg-red-100";
         const textColor = result === "Pass" ? "text-green-800" : "text-red-800";
 
+        if (result === "Pass") totalPass++;
+        else totalFail++;
+        allVariations.push({
+          landmark: landmarkName,
+          difference: Math.abs(avg - value),
+        });
+
         return `<td class="border border-gray-300 ${bgColor} ${textColor} p-2 text-center font-semibold">${result}</td>`;
+      })
+      .join("");
+  }
+
+  function generateDifferenceRow(
+    landmarks: string[],
+    levelLandmarks: ValueLandmark[],
+    landmarkDistances: number[][]
+  ): string {
+    return landmarkDistances
+      .map((distances, i) => {
+        if (distances.length === 0 || i >= landmarks.length) {
+          return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+        }
+
+        const landmarkName = landmarks[i];
+        const landmark = levelLandmarks.find((l) => l.name === landmarkName);
+        const value = safeNumber(landmark?.value);
+
+        if (value <= 0) {
+          return `<td class="border border-gray-300 p-2 text-center">-</td>`;
+        }
+
+        const avg = distances.reduce((a, b) => a + b, 0) / distances.length;
+        const difference = avg - value;
+        const sign = difference >= 0 ? "+" : "";
+        const color =
+          Math.abs(difference) <= value * 0.05
+            ? "text-green-600"
+            : "text-red-600";
+
+        return `<td class="border border-gray-300 p-2 text-center font-medium">${difference.toFixed(1)}</td>`;
       })
       .join("");
   }
@@ -571,6 +613,11 @@ import LevelReport from "./level-report.astro";
         landmarkDistances,
         tolerance
       );
+      const differenceRow = generateDifferenceRow(
+        landmarks,
+        levelData.landmarks,
+        landmarkDistances
+      );
 
       section.innerHTML = `
         <div class="space-y-6">
@@ -637,6 +684,13 @@ import LevelReport from "./level-report.astro";
                   <td class="border border-gray-300 p-2 text-center">-</td>
                   <td class="border border-gray-300 p-2 text-center">-</td>
                 </tr>
+                <tr class="bg-gray-50">
+                  <td class="border border-gray-300 p-2">Difference (Avg - Required)</td>
+                  ${differenceRow}
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                  <td class="border border-gray-300 p-2 text-center">-</td>
+                </tr>
                 <tr class="font-bold">
                   <td class="border border-gray-300 p-2 bg-gray-100">Result</td>
                   ${resultRow}
@@ -654,8 +708,306 @@ import LevelReport from "./level-report.astro";
       createScatterChart(test, level);
     });
 
+    // Calculate percentages
+    const totalChecks = totalPass + totalFail;
+    const passPercent = totalChecks ? (totalPass / totalChecks) * 100 : 0;
+    const failPercent = totalChecks ? (totalFail / totalChecks) * 100 : 0;
+
+    // Top 5 variations
+    allVariations.sort((a, b) => b.difference - a.difference);
+    const top5 = allVariations.slice(0, 5);
+
+    // Create summary JSON
+    const summaryJson = {
+      passCount: totalPass,
+      failCount: totalFail,
+      passPercent: passPercent.toFixed(1),
+      failPercent: failPercent.toFixed(1),
+      top5Variation: top5,
+      // ...add more details as needed
+    };
+
+    // Create summary section with improved structure
+    const summarySection = document.createElement("div");
+    summarySection.className = "print:break-inside-avoid";
+
+    const isApproved = parseFloat(summaryJson.passPercent) >= 60;
+    const approvalStatus = isApproved ? "approved" : "rejected";
+    const statusColor = isApproved ? "text-green-600" : "text-red-600";
+
+    summarySection.innerHTML = `
+      <div class="space-y-6">
+        <h2 class="text-2xl font-bold text-gray-800 border-b-2 border-gray-300 pb-2 print:text-xl">
+          Summary Report
+        </h2>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Pass/Fail Statistics -->
+          <div class="space-y-4">
+            <h3 class="text-lg font-semibold text-gray-700">Fit Analysis Results</h3>
+            <table class="w-full border-collapse bg-white shadow-sm text-sm rounded-lg overflow-hidden">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="border border-gray-300 p-3 text-left font-semibold">Metric</th>
+                  <th class="border border-gray-300 p-3 text-center font-semibold">Count</th>
+                  <th class="border border-gray-300 p-3 text-center font-semibold">Percentage</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="hover:bg-gray-50">
+                  <td class="border border-gray-300 p-3 font-medium">Pass</td>
+                  <td class="border border-gray-300 p-3 text-center">${summaryJson.passCount}</td>
+                  <td class="border border-gray-300 p-3 text-center text-green-600 font-semibold">${summaryJson.passPercent}%</td>
+                </tr>
+                <tr class="hover:bg-gray-50">
+                  <td class="border border-gray-300 p-3 font-medium">Fail</td>
+                  <td class="border border-gray-300 p-3 text-center">${summaryJson.failCount}</td>
+                  <td class="border border-gray-300 p-3 text-center text-red-600 font-semibold">${summaryJson.failPercent}%</td>
+                </tr>
+                <tr class="bg-gray-50 font-bold">
+                  <td class="border border-gray-300 p-3">Total</td>
+                  <td class="border border-gray-300 p-3 text-center">${totalChecks}</td>
+                  <td class="border border-gray-300 p-3 text-center">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Fit Decision -->
+          <div class="space-y-4">
+            <h3 class="text-lg font-semibold text-gray-700">Fit Decision</h3>
+            <div class="bg-gray-50 p-4 rounded-lg border-2 ${isApproved ? "border-green-200" : "border-red-200"}">
+              <div class="text-center">
+                <div class="text-2xl font-bold ${statusColor} mb-2">
+                  ${approvalStatus.toUpperCase()}
+                </div>
+                <div class="text-sm text-gray-600">
+                  Pass Rate: <span class="font-semibold">${summaryJson.passPercent}%</span>
+                </div>
+                <div class="text-xs text-gray-500 mt-1">
+                  Threshold: 60% minimum pass rate
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top 5 Variations Table -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-semibold text-gray-700">Top 5 Variations by Difference</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse bg-white shadow-sm text-sm rounded-lg overflow-hidden">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="border border-gray-300 p-3 text-center font-semibold">Rank</th>
+                  <th class="border border-gray-300 p-3 text-left font-semibold">Landmark</th>
+                  <th class="border border-gray-300 p-3 text-center font-semibold">Difference (mm)</th>
+                  
+                </tr>
+              </thead>
+              <tbody>
+                ${summaryJson.top5Variation
+                  .map((item, idx) => {
+                    const isSignificant = item.difference > 5; // Threshold for significant variation
+                    const statusColor = isSignificant
+                      ? "text-red-600"
+                      : "text-yellow-600";
+                    const statusText = isSignificant ? "High" : "Moderate";
+
+                    return `
+                      <tr class="hover:bg-gray-50">
+                        <td class="border border-gray-300 p-3 text-center font-medium">${idx + 1}</td>
+                        <td class="border border-gray-300 p-3 font-medium">${item.landmark}</td>
+                        <td class="border border-gray-300 p-3 text-center font-semibold">${item.difference.toFixed(1)}</td>
+                      
+                      </tr>
+                    `;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Final Recommendation -->
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div class="flex items-center gap-3">
+            <div class="text-blue-600">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="font-semibold text-gray-800">
+                Final Recommendation
+              </div>
+              <div class="text-sm text-gray-600">
+                Based on the analysis of ${totalChecks} measurements across all levels, 
+                the fit is <span class="font-bold ${statusColor}">${approvalStatus}</span> 
+                with a ${summaryJson.passPercent}% pass rate.
+              </div>
+            </div>
+          </div>
+        </div>
+
+       
+      </div>
+    `;
+    reportSectionContainer.appendChild(summarySection);
+
+    // Log the summary JSON to the console
+    console.log("Fit Report Summary JSON:", summaryJson);
+
     loaded = true;
     console.log("Report generated successfully");
+  };
+
+  (window as any).generateAIAnalysis = async (): Promise<void> => {
+    const test = finalJsonStore.get();
+    if (!isNotNull(test)) {
+      console.warn("No test data available for AI analysis");
+      return;
+    }
+
+    const button = document.getElementById(
+      "aiAnalysisBtn"
+    ) as HTMLButtonElement;
+    const loadingDiv = document.getElementById("aiAnalysisLoading");
+    const resultDiv = document.getElementById("aiAnalysisResult");
+    const contentDiv = document.getElementById("aiAnalysisContent");
+
+    if (!button || !loadingDiv || !resultDiv || !contentDiv) {
+      console.error("Required elements not found for AI analysis");
+      return;
+    }
+
+    // Show loading state
+    button.disabled = true;
+    button.innerHTML = `
+      <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+      Analyzing...
+    `;
+    loadingDiv.classList.remove("hidden");
+    resultDiv.classList.add("hidden");
+
+    try {
+      // Prepare the data for AI analysis
+      const analysisData = {
+        testData: test,
+        summary: {
+          passCount: totalPass,
+          failCount: totalFail,
+          passPercent: ((totalPass / (totalPass + totalFail)) * 100).toFixed(1),
+          failPercent: ((totalFail / (totalPass + totalFail)) * 100).toFixed(1),
+          top5Variation: allVariations
+            .sort((a, b) => b.difference - a.difference)
+            .slice(0, 5),
+          totalChecks: totalPass + totalFail,
+          bodyLevels: safeArray(test.bodyLevels).filter(
+            (level) => typeof level === "string"
+          ),
+          landmarks: safeArray(test.landmarks).filter(
+            (landmark) => typeof landmark === "string"
+          ),
+          trails: safeArray(test.trails).length,
+          tolerance: safeNumber(test.tolerance, 5),
+        },
+      };
+
+      // Create the prompt for Gemini AI
+      const prompt = `You are a professional garment fit analyst. Analyze the following fit test data and provide a comprehensive summary with actionable recommendations.
+
+Test Data Summary:
+- Pass Rate: ${analysisData.summary.passPercent}%
+- Total Measurements: ${analysisData.summary.totalChecks}
+- Body Levels Analyzed: ${analysisData.summary.bodyLevels.join(", ")}
+- Landmarks Measured: ${analysisData.summary.landmarks.length}
+- Number of Trails: ${analysisData.summary.trails}
+- Tolerance: ±${analysisData.summary.tolerance}%
+
+Top 5 Variations by Difference:
+${analysisData.summary.top5Variation.map((item, idx) => `${idx + 1}. ${item.landmark}: ${item.difference.toFixed(1)}mm`).join("\n")}
+
+Please provide:
+1. Overall fit assessment
+2. Key areas of concern
+3. Specific recommendations for improvement
+4. Priority areas for adjustment
+5. General fit quality rating (1-10)
+
+Format your response in clear sections with actionable insights.`;
+
+      // Call Gemini AI API (you'll need to replace with your actual API key and endpoint)
+      const response = await fetch("/api/gemini-analysis", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          data: analysisData,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Display the AI analysis
+      contentDiv.innerHTML = `
+        <div class="space-y-4">
+          <div class="border-l-4 border-purple-500 pl-4">
+            <h4 class="font-semibold text-gray-800 mb-2">Overall Assessment</h4>
+            <p class="text-gray-700">${result.assessment || "Analysis completed successfully."}</p>
+          </div>
+          
+          <div class="border-l-4 border-orange-500 pl-4">
+            <h4 class="font-semibold text-gray-800 mb-2">Key Areas of Concern</h4>
+            <p class="text-gray-700">${result.concerns || "No major concerns identified."}</p>
+          </div>
+          
+          <div class="border-l-4 border-green-500 pl-4">
+            <h4 class="font-semibold text-gray-800 mb-2">Recommendations</h4>
+            <p class="text-gray-700">${result.recommendations || "Standard fit recommendations apply."}</p>
+          </div>
+          
+          <div class="bg-gray-50 p-3 rounded-lg">
+            <div class="flex items-center justify-between">
+              <span class="font-medium text-gray-700">Fit Quality Rating:</span>
+              <span class="text-2xl font-bold text-purple-600">${result.rating || "N/A"}/10</span>
+            </div>
+          </div>
+        </div>
+      `;
+    } catch (error) {
+      console.error("AI analysis failed:", error);
+      contentDiv.innerHTML = `
+        <div class="text-red-600 p-4 bg-red-50 rounded-lg border border-red-200">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="font-medium">Analysis Failed</span>
+          </div>
+          <p class="text-sm">Unable to generate AI analysis. Please try again later or contact support.</p>
+        </div>
+      `;
+    } finally {
+      // Hide loading and show result
+      loadingDiv.classList.add("hidden");
+      resultDiv.classList.remove("hidden");
+
+      // Reset button
+      button.disabled = false;
+      button.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+        </svg>
+        Regenerate AI Analysis
+      `;
+    }
   };
 
   (window as any).downloadPDF = (): void => {

@@ -331,6 +331,7 @@ window.uploadFit = async (event: Event) => {
       (x): x is string => !!x
     );
     finalJson.criticalMeasurement = masterJson.criticalMeasurement ?? [];
+    handleAllTrialFits();
   } catch (err) {
     console.error("Failed to import JSON:", err);
   }
@@ -355,4 +356,4 @@ window.uploadFit = async (event: Event) => {
   URL.revokeObjectURL(url);
 };
 
-window.loadFit = () => handleAllTrialFits();
+// window.loadFit = () => handleAllTrialFits();

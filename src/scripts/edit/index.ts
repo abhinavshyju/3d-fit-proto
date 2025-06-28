@@ -733,7 +733,7 @@ function deleteSelectedPoints(): void {
           if (pointsToDeleteMap.has(key) && level[pointTypeKey]) {
             const pointsToRemove = pointsToDeleteMap.get(key)!;
             level[pointTypeKey] = level[pointTypeKey]!.filter(
-              (point) => !pointsToRemove.has(point)
+              (point: Point) => !pointsToRemove.has(point)
             );
           }
         });
