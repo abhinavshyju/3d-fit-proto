@@ -261,19 +261,40 @@ const handleGarmentUpload = async (event: Event, garmentIndex: number) => {
   URL.revokeObjectURL(url);
 };
 
-// Loads the form input data into masterJson
 function loadInputDataToMasterJson() {
-  const formInputs = document.querySelectorAll(
-    ".bg-white.rounded-lg.shadow-sm.p-6 input"
-  ) as NodeListOf<HTMLInputElement>;
+  const categoryInput = document.getElementById("category") as HTMLInputElement;
+  const subcategoryInput = document.getElementById(
+    "subcategory"
+  ) as HTMLInputElement;
+  const fitNameInput = document.getElementById("fitName") as HTMLInputElement;
+  const technicianInput = document.getElementById(
+    "technician"
+  ) as HTMLInputElement;
+  const dateInput = document.getElementById("date") as HTMLInputElement;
+  const toleranceInput = document.getElementById(
+    "tolerance"
+  ) as HTMLInputElement;
+  const versionInput = document.getElementById("version") as HTMLInputElement;
 
-  if (formInputs.length < 7) return;
-  masterJson.category = formInputs[0].value;
-  masterJson.subcategory = formInputs[1].value;
-  masterJson.fitName = formInputs[2].value;
+  if (
+    !categoryInput ||
+    !subcategoryInput ||
+    !fitNameInput ||
+    !dateInput ||
+    !toleranceInput ||
+    !versionInput
+  ) {
+    console.error("Some required form inputs are missing");
+    return;
+  }
 
-  masterJson.date = formInputs[4].value;
-  masterJson.tolerance = Number(formInputs[5].value) || 0;
-  masterJson.version = formInputs[6].value;
-  console.log(masterJson);
+  masterJson.category = categoryInput.value;
+  masterJson.subcategory = subcategoryInput.value;
+  masterJson.fitName = fitNameInput.value;
+  // Note: technician field is not used in masterJson
+  masterJson.date = dateInput.value;
+  masterJson.tolerance = Number(toleranceInput.value) || 0;
+  masterJson.version = versionInput.value;
+
+  console.log("Updated masterJson:", masterJson);
 }

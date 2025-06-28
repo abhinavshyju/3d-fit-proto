@@ -277,9 +277,11 @@ function clearFileNameDisplay(fileType: "body" | "landmarks" | "garment") {
     const landmarkTableHead = document.getElementById("landmarkTableHead");
     if (!landmarkTableHead) return;
     landmarkTableHead.innerHTML = "";
+    const th1 = document.createElement("th");
+    landmarkTableHead.appendChild(th1);
     parsedJson.bodyLevels?.forEach((item) => {
       const th = document.createElement("th");
-      th.classList.add("text-left", "font-bold", "p-2");
+      th.classList.add("font-bold", "p-2");
       th.innerText = item?.toUpperCase() || "none";
       landmarkTableHead.appendChild(th);
     });
