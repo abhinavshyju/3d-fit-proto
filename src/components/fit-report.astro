@@ -145,7 +145,8 @@ import LevelReport from "./level-report.astro";
   let loaded = false;
   let totalPass = 0;
   let totalFail = 0;
-  let allVariations: { landmark: string; difference: number }[] = []; // { landmark, difference }
+  let allVariations: { landmark: string; level: string; difference: number }[] =
+    []; // { landmark, level, difference }
 
   // Type-safe null check helpers
   function isNotNull<T>(value: T | null | undefined): value is T {
@@ -317,7 +318,8 @@ import LevelReport from "./level-report.astro";
     landmarks: string[],
     levelLandmarks: ValueLandmark[],
     landmarkDistances: number[][],
-    tolerance: number
+    tolerance: number,
+    level: string
   ): string {
     return landmarkDistances
       .map((distances, i) => {
@@ -345,6 +347,7 @@ import LevelReport from "./level-report.astro";
         else totalFail++;
         allVariations.push({
           landmark: landmarkName,
+          level: level,
           difference: Math.abs(avg - value),
         });
 
@@ -611,7 +614,8 @@ import LevelReport from "./level-report.astro";
         landmarks,
         levelData.landmarks,
         landmarkDistances,
-        tolerance
+        tolerance,
+        level
       );
       const differenceRow = generateDifferenceRow(
         landmarks,
@@ -741,7 +745,7 @@ import LevelReport from "./level-report.astro";
           Summary Report
         </h2>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1  gap-6">
           <!-- Pass/Fail Statistics -->
           <div class="space-y-4">
             <h3 class="text-lg font-semibold text-gray-700">Fit Analysis Results</h3>
@@ -772,24 +776,6 @@ import LevelReport from "./level-report.astro";
               </tbody>
             </table>
           </div>
-
-          <!-- Fit Decision -->
-          <div class="space-y-4">
-            <h3 class="text-lg font-semibold text-gray-700">Fit Decision</h3>
-            <div class="bg-gray-50 p-4 rounded-lg border-2 ${isApproved ? "border-green-200" : "border-red-200"}">
-              <div class="text-center">
-                <div class="text-2xl font-bold ${statusColor} mb-2">
-                  ${approvalStatus.toUpperCase()}
-                </div>
-                <div class="text-sm text-gray-600">
-                  Pass Rate: <span class="font-semibold">${summaryJson.passPercent}%</span>
-                </div>
-                <div class="text-xs text-gray-500 mt-1">
-                  Threshold: 60% minimum pass rate
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Top 5 Variations Table -->
@@ -801,6 +787,7 @@ import LevelReport from "./level-report.astro";
                 <tr class="bg-gray-100">
                   <th class="border border-gray-300 p-3 text-center font-semibold">Rank</th>
                   <th class="border border-gray-300 p-3 text-left font-semibold">Landmark</th>
+                  <th class="border border-gray-300 p-3 text-left font-semibold">Level</th>
                   <th class="border border-gray-300 p-3 text-center font-semibold">Difference (mm)</th>
                   
                 </tr>
@@ -818,6 +805,7 @@ import LevelReport from "./level-report.astro";
                       <tr class="hover:bg-gray-50">
                         <td class="border border-gray-300 p-3 text-center font-medium">${idx + 1}</td>
                         <td class="border border-gray-300 p-3 font-medium">${item.landmark}</td>
+                        <td class="border border-gray-300 p-3 font-medium">${item.level}</td>
                         <td class="border border-gray-300 p-3 text-center font-semibold">${item.difference.toFixed(1)}</td>
                       
                       </tr>
@@ -827,30 +815,7 @@ import LevelReport from "./level-report.astro";
               </tbody>
             </table>
           </div>
-        </div>
-
-        <!-- Final Recommendation -->
-        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <div class="flex items-center gap-3">
-            <div class="text-blue-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-            </div>
-            <div>
-              <div class="font-semibold text-gray-800">
-                Final Recommendation
-              </div>
-              <div class="text-sm text-gray-600">
-                Based on the analysis of ${totalChecks} measurements across all levels, 
-                the fit is <span class="font-bold ${statusColor}">${approvalStatus}</span> 
-                with a ${summaryJson.passPercent}% pass rate.
-              </div>
-            </div>
-          </div>
-        </div>
-
-       
+        </div>       
       </div>
     `;
     reportSectionContainer.appendChild(summarySection);

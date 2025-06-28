@@ -97,6 +97,28 @@ import { Save } from "lucide-react";
       0 0 0 2px #fff,
       0 0 0 4px #22c55e;
   }
+
+  .file-name {
+    font-size: 0.75rem;
+    color: #6b7280;
+    padding: 0.25rem 0.5rem;
+    background-color: #f3f4f6;
+    border-radius: 0.25rem;
+    word-break: break-all;
+    min-height: 1.5rem;
+    display: flex;
+    align-items: center;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-name.has-files {
+    color: #059669;
+    background-color: #d1fae5;
+    border: 1px solid #a7f3d0;
+  }
 </style>
 
 <Layout>
@@ -132,12 +154,17 @@ import { Save } from "lucide-react";
                 id="bodyFileInput"
                 onchange="uploadBody(event)"
               />
-              <button
-                onclick="document.getElementById('bodyFileInput').click()"
-                class="action-button btn-primary text-sm w-full"
-              >
-                Choose Files
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  onclick="document.getElementById('bodyFileInput').click()"
+                  class="action-button btn-primary text-sm"
+                >
+                  Choose Files
+                </button>
+                <div id="bodyFileName" class="file-name flex-1">
+                  No files selected
+                </div>
+              </div>
             </div>
             <div id="bodyViewPort" class="viewport-container h-96 mt-4"></div>
           </div>
@@ -160,12 +187,17 @@ import { Save } from "lucide-react";
                 id="trial1FileInput"
                 onchange="uploadTrialOne(event)"
               />
-              <button
-                onclick="document.getElementById('trial1FileInput').click()"
-                class="action-button btn-primary text-sm w-full"
-              >
-                Choose Files
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  onclick="document.getElementById('trial1FileInput').click()"
+                  class="action-button btn-primary text-sm"
+                >
+                  Choose Files
+                </button>
+                <div id="trial1FileName" class="file-name flex-1">
+                  No files selected
+                </div>
+              </div>
             </div>
             <div id="tOneViewPort" class="viewport-container h-96 mt-4"></div>
           </div>
@@ -188,12 +220,17 @@ import { Save } from "lucide-react";
                 id="trial2FileInput"
                 onchange="uploadTrialTwo(event)"
               />
-              <button
-                onclick="document.getElementById('trial2FileInput').click()"
-                class="action-button btn-primary text-sm w-full"
-              >
-                Choose Files
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  onclick="document.getElementById('trial2FileInput').click()"
+                  class="action-button btn-primary text-sm"
+                >
+                  Choose Files
+                </button>
+                <div id="trial2FileName" class="file-name flex-1">
+                  No files selected
+                </div>
+              </div>
             </div>
             <div id="tTwoViewPort" class="viewport-container h-96 mt-4"></div>
           </div>
@@ -216,12 +253,17 @@ import { Save } from "lucide-react";
                 id="trial3FileInput"
                 onchange="uploadTrialThree(event)"
               />
-              <button
-                onclick="document.getElementById('trial3FileInput').click()"
-                class="action-button btn-primary text-sm w-full"
-              >
-                Choose Files
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  onclick="document.getElementById('trial3FileInput').click()"
+                  class="action-button btn-primary text-sm"
+                >
+                  Choose Files
+                </button>
+                <div id="trial3FileName" class="file-name flex-1">
+                  No files selected
+                </div>
+              </div>
             </div>
             <div id="tThreeViewPort" class="viewport-container h-96 mt-4"></div>
           </div>
@@ -249,12 +291,17 @@ import { Save } from "lucide-react";
                   id="fitFileInput"
                   onchange="uploadFit(event)"
                 />
-                <button
-                  onclick="document.getElementById('fitFileInput').click()"
-                  class="action-button btn-secondary text-sm w-full"
-                >
-                  Choose File
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    onclick="document.getElementById('fitFileInput').click()"
+                    class="action-button btn-secondary text-sm"
+                  >
+                    Choose File
+                  </button>
+                  <div id="fitFileName" class="file-name flex-1">
+                    No file selected
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -382,4 +429,38 @@ import { Save } from "lucide-react";
     if (!reportCon) return;
     reportCon.classList.add("hidden");
   };
+
+  // Function to update file name display
+  function updateFileNameDisplay(inputId: string, displayId: string) {
+    const input = document.getElementById(inputId) as HTMLInputElement;
+    const display = document.getElementById(displayId);
+
+    if (input && display) {
+      input.addEventListener("change", function (event) {
+        const target = event.target as HTMLInputElement;
+        const files = target.files;
+        if (files && files.length > 0) {
+          const fileNames = Array.from(files)
+            .map((file: File) => file.name)
+            .join(", ");
+          display.textContent = fileNames;
+          display.classList.add("has-files");
+        } else {
+          display.textContent = inputId.includes("fit")
+            ? "No file selected"
+            : "No files selected";
+          display.classList.remove("has-files");
+        }
+      });
+    }
+  }
+
+  // Initialize file name displays when DOM is loaded
+  document.addEventListener("DOMContentLoaded", function () {
+    updateFileNameDisplay("bodyFileInput", "bodyFileName");
+    updateFileNameDisplay("trial1FileInput", "trial1FileName");
+    updateFileNameDisplay("trial2FileInput", "trial2FileName");
+    updateFileNameDisplay("trial3FileInput", "trial3FileName");
+    updateFileNameDisplay("fitFileInput", "fitFileName");
+  });
 </script>

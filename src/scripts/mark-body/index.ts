@@ -423,7 +423,10 @@ class EventHandlers {
 
       DOMUtils.populateSelect(
         "levelSelecter",
-        state.levels.map((level) => ({ value: level.name, text: level.name }))
+        state.levels.map((level) => ({
+          value: level.name,
+          text: level.name.toLocaleUpperCase(),
+        }))
       );
 
       DOMUtils.toggleDialog("selectLevelDialog", true);

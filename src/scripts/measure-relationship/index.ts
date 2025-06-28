@@ -50,6 +50,9 @@ scene.add(axesHelper);
 let bodyModel: THREE.Object3D | null = null;
 let garmentModel: THREE.Object3D | null = null;
 let garmentName: string;
+let bodyFileName: string = "";
+let landmarksFileName: string = "";
+let garmentFileName: string = "";
 
 const masterJson: MasterJson = {
   fileName: null,
@@ -75,17 +78,164 @@ const masterJson: MasterJson = {
   },
 };
 let measure = false;
+
+// Helper function to clear garment-related visualizations and measurements
+function clearGarmentVisualizations() {
+  // Remove the old garment model from the scene
+  if (garmentModel) {
+    scene.remove(garmentModel);
+    garmentModel = null;
+  }
+
+  const sceneChildren = [...scene.children];
+  sceneChildren.forEach((child) => {
+    // Remove garment-related points (colored markers) but keep body-related ones
+    if (child.type === "Group" && child.userData?.type === "garment-point") {
+      scene.remove(child);
+    }
+    // Also remove any other garment-related objects that might not be marked
+    if (child.type === "Group" && child.children.length > 0) {
+      const hasGarmentPoints = child.children.some(
+        (grandChild) =>
+          grandChild.userData?.type === "garment-point" ||
+          grandChild.userData?.source === "garment-measurement"
+      );
+      if (hasGarmentPoints) {
+        scene.remove(child);
+      }
+    }
+    // Remove individual points that were added during calculateMeasurement
+    if (child.userData?.type === "garment-point") {
+      scene.remove(child);
+    }
+  });
+
+  // Reset measure flag
+  measure = false;
+
+  // Clear measurement table
+  const measurementBody = document.getElementById("measurementBody");
+  if (measurementBody) {
+    measurementBody.innerHTML = "";
+  }
+
+  // Clear garment levels from masterJson
+  if (masterJson.garment && Array.isArray(masterJson.garment.levels)) {
+    masterJson.garment.levels.length = 0;
+  } else if (masterJson.garment) {
+    masterJson.garment.levels = [];
+  }
+
+  // Clear garment file name display
+  garmentFileName = "";
+  updateFileNameDisplay("garment", "");
+}
+
+// Helper function to update file name display
+function updateFileNameDisplay(
+  fileType: "body" | "landmarks" | "garment",
+  fileName: string
+) {
+  const displayElement = document.getElementById(`${fileType}FileName`);
+  const textElement = document.getElementById(`${fileType}FileNameText`);
+
+  if (displayElement && textElement) {
+    if (fileName && fileName.trim() !== "") {
+      textElement.textContent = fileName;
+      if (displayElement.classList.contains("hidden")) {
+        displayElement.classList.remove("hidden");
+      }
+    } else {
+      if (!displayElement.classList.contains("hidden")) {
+        displayElement.classList.add("hidden");
+      }
+    }
+  }
+}
+
+// Helper function to clear file name display
+function clearFileNameDisplay(fileType: "body" | "landmarks" | "garment") {
+  const displayElement = document.getElementById(`${fileType}FileName`);
+  if (displayElement && !displayElement.classList.contains("hidden")) {
+    displayElement.classList.add("hidden");
+  }
+}
+
+// Global function to reset everything
+(window as any).resetScene = () => {
+  clearGarmentVisualizations();
+  // Reset garment model
+  garmentModel = null;
+  garmentName = "";
+  garmentFileName = "";
+  updateFileNameDisplay("garment", "");
+  if (masterJson.garment) {
+    masterJson.garment.name = "";
+  }
+};
+
+// Global function to clear all file displays
+(window as any).clearAllFiles = () => {
+  // Clear body
+  bodyModel = null;
+  bodyFileName = "";
+  updateFileNameDisplay("body", "");
+
+  // Clear landmarks
+  landmarksFileName = "";
+  updateFileNameDisplay("landmarks", "");
+
+  // Clear garment
+  garmentModel = null;
+  garmentName = "";
+  garmentFileName = "";
+  updateFileNameDisplay("garment", "");
+
+  // Clear scene
+  clearGarmentVisualizations();
+
+  // Reset masterJson
+  if (masterJson.garment) {
+    masterJson.garment.name = "";
+  }
+  if (masterJson.body && Array.isArray(masterJson.body.levels)) {
+    masterJson.body.levels.length = 0;
+  }
+  masterJson.fileName = null;
+  masterJson.bodyLevels = [];
+  masterJson.landmarks = [];
+};
+
 (window as any).bodyUpload = (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (file) {
+    bodyFileName = file.name;
+    updateFileNameDisplay("body", bodyFileName);
+  }
+
   loadModel(
     event,
     scene,
     "body",
     (model: THREE.Object3D, LocalfileName: string) => {
       bodyModel = model;
+      bodyFileName = LocalfileName;
+      updateFileNameDisplay("body", bodyFileName);
     }
   );
 };
 (window as any).garmentUpload = (event: Event) => {
+  // Clear previous garment visualizations and measurements
+  clearGarmentVisualizations();
+
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (file) {
+    garmentFileName = file.name;
+    updateFileNameDisplay("garment", garmentFileName);
+  }
+
   loadModel(
     event,
     scene,
@@ -93,6 +243,8 @@ let measure = false;
     (model: THREE.Object3D, LocalfileName: string) => {
       garmentModel = model;
       garmentName = LocalfileName;
+      garmentFileName = LocalfileName;
+      updateFileNameDisplay("garment", garmentFileName);
       if (masterJson.garment) {
         masterJson.garment.name = garmentName;
       }
@@ -105,6 +257,8 @@ let measure = false;
   if (!file) return;
 
   try {
+    landmarksFileName = file.name;
+    updateFileNameDisplay("landmarks", landmarksFileName);
     const parsedJson = await importMasterJsonFromFile(file);
     console.log(parsedJson);
     masterJson.fileName = parsedJson.fileName ?? null;
@@ -177,6 +331,7 @@ let measure = false;
   if (!garmentModel || !bodyModel) return;
 
   // Clear previous garment levels before pushing new ones
+  // This ensures fresh calculations for the current garment model
   if (masterJson.garment && Array.isArray(masterJson.garment.levels)) {
     masterJson.garment.levels.length = 0;
   } else if (masterJson.garment) {
@@ -227,6 +382,7 @@ let measure = false;
       });
       const markerPoint = createPoint(point.color as ColorName);
       markerPoint.position.copy(nearestPoint);
+      markerPoint.userData = { type: "garment-point" };
       scene.add(markerPoint);
     });
     if (masterJson.garment && Array.isArray(masterJson.garment.levels)) {
