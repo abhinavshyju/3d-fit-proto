@@ -20,6 +20,7 @@ import {
 import { setFinalJson } from "../storage";
 import type { MasterJson, Trail } from "../type";
 import { importMasterJsonFromFile } from "../JsonImport";
+import { getCurrentDateYYYYMMDD } from "../utils";
 
 Chart.register(
   ScatterController,
@@ -95,7 +96,7 @@ class ThreeScene {
   }
 
   private initLights(): void {
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    this.scene.add(new THREE.AmbientLight(0xffffff, 10));
     const lightPositions = [
       [5, 10, 7.5],
       [5, 10, -7.5],
@@ -350,7 +351,9 @@ window.uploadFit = async (event: Event) => {
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${finalJson.fileName}_report.json`;
+  link.download = `${getCurrentDateYYYYMMDD()}-Fit Analysis-${
+    masterJson.fitName
+  }-${masterJson.body?.bodyName}`;
   link.click();
 
   URL.revokeObjectURL(url);

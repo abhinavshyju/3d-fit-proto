@@ -11,6 +11,7 @@ import { landMarks } from "../landmarks";
 import Chart from "chart.js/auto";
 import { DragControls } from "three/addons/controls/DragControls.js";
 import type { MasterJson } from "../type";
+import { getCurrentDateYYYYMMDD } from "../utils";
 let value = 1;
 // Types
 interface Level {
@@ -63,7 +64,7 @@ controls.enableDamping = true;
 
 // Lighting setup
 const setupLighting = () => {
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+  const ambientLight = new THREE.AmbientLight(0xffffff, 10);
   scene.add(ambientLight);
 };
 // Animation loop
@@ -512,6 +513,9 @@ class EventHandlers {
   loadModel(event, scene, "body", (model: THREE.Object3D, fileName: string) => {
     state.bodyModel = model;
     state.fileName = fileName;
+    if (state.masterJson.body) {
+      state.masterJson.body.bodyName = fileName;
+    }
     state.masterJson.fileName = fileName;
   });
 };
@@ -802,7 +806,9 @@ class EventHandlers {
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${state.masterJson.fileName}.json`;
+  link.download = `${getCurrentDateYYYYMMDD()}-Body-Landmarks-${
+    state.masterJson.body?.bodyName
+  }.json`;
   link.click();
 
   URL.revokeObjectURL(url);

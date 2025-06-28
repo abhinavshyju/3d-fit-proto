@@ -2,6 +2,7 @@ import { importMasterJsonFromFile } from "../JsonImport";
 import type { Level, MasterJson } from "../type";
 
 import * as THREE from "three";
+import { getCurrentDateYYYYMMDD } from "../utils";
 let load = false;
 
 const masterJson: MasterJson = {
@@ -91,11 +92,7 @@ const handleGarmentUpload = async (event: Event, garmentIndex: number) => {
 
         const avgDistance =
           distances.length > 0
-            ? Number(
-                (
-                  distances.reduce((a, b) => a + b, 0) / distances.length
-                ).toFixed(2)
-              )
+            ? Number(distances.reduce((a, b) => a + b, 0) / distances.length)
             : 0;
 
         const avgPoint =
@@ -111,8 +108,8 @@ const handleGarmentUpload = async (event: Event, garmentIndex: number) => {
         return {
           name: landmark,
           point: avgPoint,
-          dis: distances[0],
-          value: distances[0],
+          dis: avgDistance,
+          value: avgDistance,
           avg: avgDistance,
         };
       })
@@ -256,7 +253,9 @@ const handleGarmentUpload = async (event: Event, garmentIndex: number) => {
 
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${masterJson.fileName || "master"}_fit_measurement.json`;
+  a.download = `${getCurrentDateYYYYMMDD()}-Fit Defintion-${
+    masterJson.fitName
+  }.json`;
   a.click();
 
   URL.revokeObjectURL(url);

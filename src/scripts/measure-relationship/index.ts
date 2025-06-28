@@ -11,6 +11,7 @@ import { getPlaneFromMesh } from "../planeFromMesh";
 import { sortPointsNearestNeighbor } from "../sort";
 import type { Landmark, MasterJson } from "../type";
 import { importMasterJsonFromFile } from "../JsonImport";
+import { getCurrentDateYYYYMMDD } from "../utils";
 
 export const scene: THREE.Scene = new THREE.Scene();
 scene.background = new THREE.Color(0x303030);
@@ -33,7 +34,8 @@ if (viewPort) viewPort.appendChild(renderer.domElement);
 const controls: OrbitControls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+const ambientLight = new THREE.AmbientLight(0xffffff, 10);
+
 scene.add(ambientLight);
 
 function animate(): void {
@@ -496,7 +498,10 @@ window.addEventListener("DOMContentLoaded", initTextInputs);
 
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${masterJson.fileName}_measurement.json`;
+  link.download = `${getCurrentDateYYYYMMDD()}-Body-Garment-Measurement-${
+    masterJson.body?.bodyName
+  }-${masterJson.garment?.name}
+.json`;
   link.click();
 
   URL.revokeObjectURL(url);

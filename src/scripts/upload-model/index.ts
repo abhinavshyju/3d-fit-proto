@@ -34,7 +34,7 @@ if (viewPort) viewPort.appendChild(renderer.domElement);
 const controls: OrbitControls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+scene.add(new THREE.AmbientLight(0xffffff, 10));
 
 const directionalLight1 = new THREE.DirectionalLight(0xffffff);
 directionalLight1.position.set(5, 10, 7.5);
