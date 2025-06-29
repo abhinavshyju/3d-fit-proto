@@ -266,13 +266,8 @@ function clearFileNameDisplay(fileType: "body" | "landmarks" | "garment") {
     masterJson.fileName = parsedJson.fileName ?? null;
     masterJson.bodyLevels = parsedJson.bodyLevels ?? [];
     masterJson.landmarks = parsedJson.landmarks ?? [];
-
-    // Clear previous levels before pushing new ones
-    if (masterJson.body && Array.isArray(masterJson.body.levels)) {
-      masterJson.body.levels.length = 0;
-    } else if (masterJson.body) {
-      masterJson.body.levels = [];
-    }
+    masterJson.unit = parsedJson.unit;
+    masterJson.body = parsedJson.body;
 
     const landmarkTableHead = document.getElementById("landmarkTableHead");
     if (!landmarkTableHead) return;

@@ -312,6 +312,7 @@ window.uploadFit = async (event: Event) => {
     finalJson.fileName = masterJson.fileName ?? "";
     finalJson.body = masterJson.body;
     finalJson.fitName = masterJson.fitName ?? "";
+    finalJson.unit = masterJson.unit ?? 1;
     finalJson.tolerance = masterJson.tolerance ?? 0;
     finalJson.subcategory = masterJson.subcategory ?? "";
     finalJson.date = masterJson.date ?? "";

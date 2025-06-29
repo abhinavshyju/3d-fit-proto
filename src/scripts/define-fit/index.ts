@@ -291,7 +291,7 @@ function loadInputDataToMasterJson() {
   masterJson.category = categoryInput.value;
   masterJson.subcategory = subcategoryInput.value;
   masterJson.fitName = fitNameInput.value;
-  // Note: technician field is not used in masterJson
+
   masterJson.date = dateInput.value;
   masterJson.tolerance = Number(toleranceInput.value) || 0;
   masterJson.version = versionInput.value;
