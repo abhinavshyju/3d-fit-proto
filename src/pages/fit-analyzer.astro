@@ -327,7 +327,7 @@ import { Save } from "lucide-react";
                 Generate Report
               </button>
               <button
-                onclick="calculateMeasurement()"
+                onclick="editJson()"
                 class="action-button text-white bg-blue-500 w-full flex justify-center items-center"
               >
                 <svg
@@ -380,50 +380,12 @@ import { Save } from "lucide-react";
       </div> -->
 
       <!-- Report Container -->
-      <div
-        class="bg-white rounded-lg shadow-sm border border-gray-200 print:shadow-none print:border-none"
-        id="reportCon"
-      >
-        <div class="p-6 border-b border-gray-200 print:hidden">
-          <div class="flex justify-between items-center">
-            <h2 class="text-xl font-semibold text-gray-900">
-              Fit Analysis Report
-            </h2>
-            <button onclick="closeBtn()" class="action-button btn-secondary">
-              <svg
-                class="w-4 h-4 inline mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-              Close
-            </button>
-          </div>
-        </div>
-        <div class="p-6">
-          <FitReport />
-        </div>
-      </div>
     </div>
   </div>
 </Layout>
 
 <script src="../scripts/fit-analyzer/index.ts"></script>
 <script>
-  // Report functionality
-  // (window as any).report = () => {
-  //   const reportCon = document.getElementById("reportCon");
-  //   if (!reportCon) return;
-  //   reportCon.classList.remove("hidden");
-  //   reportCon.scrollIntoView({ behavior: "smooth" });
-  // };
-
   (window as any).closeBtn = () => {
     const reportCon = document.getElementById("reportCon");
     if (!reportCon) return;

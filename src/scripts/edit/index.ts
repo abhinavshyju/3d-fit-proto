@@ -1,889 +1,725 @@
-import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/Addons.js";
+import { JSONViewer } from "./JSONViewer";
+import { UIManager } from "./UIManager";
+import type { JSONData } from "./types";
 
-// Type definitions for the JSON data based on the provided MasterJson interface
-interface Point {
-  x: number;
-  y: number;
-  z: number;
-}
+class App {
+  private viewer: JSONViewer;
+  private uiManager: UIManager;
+  private jsonData: JSONData | null = null;
 
-interface Level {
-  name: string;
-  bodyIntersectionPoints?: Point[];
-  dressIntersectionPoints?: Point[];
-  landmarkPoints?: Point[];
-}
+  constructor() {
+    this.viewer = new JSONViewer();
+    this.uiManager = new UIManager();
+    this.uiManager.add2DEditorControls();
 
-interface PointCloudData {
-  fileName?: string;
-  levels: Level[];
-}
-
-interface FilteredPointData {
-  type: "body" | "dress" | "landmark";
-  point: Point;
-  level: string;
-}
-
-interface SelectedPointInfo {
-  geometryIndex: number;
-  pointsMesh: THREE.Points;
-  originalDataRef: FilteredPointData;
-}
-
-// Replace PointCloudData and Level interfaces with a generic one for visualization
-interface VisualizedLevel {
-  name: string;
-  source: string; // 'body', 'garment', or 'trail:trailName'
-  intersectionPoints?: THREE.Vector3[];
-  landmarks?: { name: string; point: THREE.Vector3; color?: string }[];
-}
-
-interface VisualizedData {
-  fileName?: string;
-  levels: VisualizedLevel[];
-}
-
-// Global variables
-let scene: THREE.Scene;
-let camera: THREE.PerspectiveCamera;
-let renderer: THREE.WebGLRenderer;
-let controls: OrbitControls;
-let originalData: VisualizedData | null = null;
-let filteredPoints: FilteredPointData[] = [];
-let pointsGroup: THREE.Group;
-let raycaster: THREE.Raycaster;
-let mouse: THREE.Vector2;
-let measuring = false;
-let firstMeasurementPoint: THREE.Vector3 | null = null;
-let measurementLine: THREE.Line | null = null;
-let selectedPoints: SelectedPointInfo[] = [];
-let selecting = false;
-let selectionRectMesh: THREE.LineLoop | null = null;
-let startSelectPoint = new THREE.Vector2();
-let currentMousePoint = new THREE.Vector2();
-let addingPoint = false;
-
-// DOM elements
-const infoBox = document.getElementById("info-box") as HTMLDivElement;
-const levelFilter = document.getElementById("levelFilter") as HTMLSelectElement;
-const toggleBodyPoints = document.getElementById(
-  "toggleBodyPoints"
-) as HTMLInputElement;
-const toggleDressPoints = document.getElementById(
-  "toggleDressPoints"
-) as HTMLInputElement;
-const toggleLandmarkPoints = document.getElementById(
-  "toggleLandmarkPoints"
-) as HTMLInputElement;
-const measureDistanceBtn = document.getElementById(
-  "measureDistance"
-) as HTMLButtonElement;
-const selectPointsBtn = document.getElementById(
-  "selectPoints"
-) as HTMLButtonElement;
-const deleteSelectedBtn = document.getElementById(
-  "deleteSelected"
-) as HTMLButtonElement;
-const addDressPointBtn = document.getElementById(
-  "addDressPoint"
-) as HTMLButtonElement;
-const saveJsonBtn = document.getElementById("saveJson") as HTMLButtonElement;
-const fileInput = document.getElementById("fileInput") as HTMLInputElement;
-const loadingOverlay = document.getElementById(
-  "loading-overlay"
-) as HTMLDivElement;
-const messageModal = document.getElementById("messageModal") as HTMLDivElement;
-const modalMessage = document.getElementById(
-  "modalMessage"
-) as HTMLParagraphElement;
-const topViewBtn = document.getElementById("topView") as HTMLButtonElement;
-const canvasContainer = document.getElementById(
-  "canvas-container"
-) as HTMLDivElement;
-
-// Function to show a modal message
-function showMessage(message: string): void {
-  modalMessage.textContent = message;
-  messageModal.classList.remove("hidden");
-  messageModal.style.display = "flex";
-}
-
-// Initialize Three.js scene, camera, and renderer
-function init(): void {
-  // Scene
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a202c);
-
-  // Camera
-  camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
-  camera.position.set(0, 1, 5);
-
-  // Renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  canvasContainer.appendChild(renderer.domElement);
-
-  // OrbitControls for camera interaction (rotate, zoom, pan)
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.25;
-
-  // Lights
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-  scene.add(ambientLight);
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-  directionalLight.position.set(0, 1, 1);
-  scene.add(directionalLight);
-
-  // Add XYZ axes helper
-  const axesHelper = new THREE.AxesHelper(5);
-  scene.add(axesHelper);
-
-  // Raycaster for point interaction
-  raycaster = new THREE.Raycaster();
-  mouse = new THREE.Vector2();
-
-  // Group to hold all points
-  pointsGroup = new THREE.Group();
-  scene.add(pointsGroup);
-
-  // Event Listeners
-  window.addEventListener("resize", onWindowResize, false);
-  renderer.domElement.addEventListener("pointerdown", onPointerDown, false);
-  renderer.domElement.addEventListener("pointermove", onPointerMove, false);
-  renderer.domElement.addEventListener("pointerup", onPointerUp, false);
-
-  fileInput.addEventListener("change", handleFileUpload);
-  levelFilter.addEventListener("change", renderPoints);
-  toggleBodyPoints.addEventListener("change", renderPoints);
-  toggleDressPoints.addEventListener("change", renderPoints);
-  toggleLandmarkPoints.addEventListener("change", renderPoints);
-  measureDistanceBtn.addEventListener("click", toggleMeasureDistance);
-  selectPointsBtn.addEventListener("click", toggleSelectPoints);
-  deleteSelectedBtn.addEventListener("click", deleteSelectedPoints);
-  addDressPointBtn.addEventListener("click", toggleAddPoint);
-  saveJsonBtn.addEventListener("click", saveModifiedJson);
-  topViewBtn.addEventListener("click", setTopView);
-
-  animate();
-}
-
-// Handle window resize
-function onWindowResize(): void {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-// Animation loop
-function animate(): void {
-  requestAnimationFrame(animate);
-  controls.update();
-  renderer.render(scene, camera);
-}
-
-// Replace loadJsonData to accept MasterJson and flatten all levels
-function loadJsonData(data: any): void {
-  // Try to detect if it's MasterJson
-  let visualized: VisualizedData = {
-    fileName: data.fileName ?? undefined,
-    levels: [],
-  };
-
-  // Handle body.levels
-  if (data.body && Array.isArray(data.body.levels)) {
-    for (const lvl of data.body.levels) {
-      if (!lvl) continue;
-      visualized.levels.push({
-        name: lvl.name ?? "Unnamed",
-        source: "body",
-        intersectionPoints: (lvl.intersectionPoints ?? []).filter(Boolean),
-        landmarks: (lvl.landmarks ?? []).filter(Boolean).map((lm: any) => ({
-          name: lm.name ?? "",
-          point: lm.point,
-          color: lm.color ?? undefined,
-        })),
-      });
+    // Check if 2D edit button exists
+    const edit2DBtn = document.getElementById(
+      "2d-edit-btn"
+    ) as HTMLButtonElement;
+    console.log("=== APP INITIALIZATION ===");
+    console.log("2D Edit button found:", !!edit2DBtn);
+    if (edit2DBtn) {
+      console.log("2D Edit button text:", edit2DBtn.textContent);
+      console.log("2D Edit button disabled:", edit2DBtn.disabled);
     }
+
+    this.initializeEventListeners();
+    this.loadDefaultJSON();
   }
-  // Handle garment.levels
-  if (data.garment && Array.isArray(data.garment.levels)) {
-    for (const lvl of data.garment.levels) {
-      if (!lvl) continue;
-      visualized.levels.push({
-        name: lvl.name ?? "Unnamed",
-        source: "garment",
-        intersectionPoints: (lvl.intersectionPoints ?? []).filter(Boolean),
-        landmarks: (lvl.landmarks ?? []).filter(Boolean).map((lm: any) => ({
-          name: lm.name ?? "",
-          point: lm.point,
-          color: lm.color ?? undefined,
-        })),
-      });
-    }
-  }
-  // Handle trails (n number)
-  if (Array.isArray(data.trails)) {
-    for (const trail of data.trails) {
-      if (!trail || !Array.isArray(trail.levels)) continue;
-      for (const lvl of trail.levels) {
-        if (!lvl) continue;
-        visualized.levels.push({
-          name: lvl.name ?? "Unnamed",
-          source: `trail:${trail.trailName ?? "unnamed"}`,
-          intersectionPoints: (lvl.intersectionPoints ?? []).filter(Boolean),
-          landmarks: (lvl.landmarks ?? []).filter(Boolean).map((lm: any) => ({
-            name: lm.name ?? "",
-            point: lm.point,
-            color: lm.color ?? undefined,
-          })),
-        });
+
+  private initializeEventListeners(): void {
+    // File input
+    const fileInput = document.getElementById("file-input") as HTMLInputElement;
+    fileInput.addEventListener("change", (event) => {
+      const target = event.target as HTMLInputElement;
+      if (target.files && target.files[0]) {
+        this.loadJSONFile(target.files[0]);
       }
-    }
-  }
-  originalData = visualized;
-  populateLevelFilter();
-  renderPoints();
-}
+    });
 
-// Populate the level filter dropdown
-function populateLevelFilter(): void {
-  levelFilter.innerHTML = '<option value="all">All Levels</option>';
-  if (originalData && originalData.levels) {
-    originalData.levels.forEach((level) => {
-      const option = document.createElement("option");
-      option.value = `${level.source}::${level.name}`;
-      option.textContent = `${level.name} [${level.source}]`;
-      levelFilter.appendChild(option);
+    // Level filter
+    const levelFilter = document.getElementById(
+      "level-filter"
+    ) as HTMLSelectElement;
+    levelFilter.addEventListener("change", () => {
+      this.updateFilters();
+    });
+
+    // Trial filter
+    const trialFilter = document.getElementById(
+      "garment-filter"
+    ) as HTMLSelectElement;
+    trialFilter.addEventListener("change", () => {
+      this.updateFilters();
+    });
+
+    // Point type toggles
+    const showBodyPoints = document.getElementById(
+      "show-body-points"
+    ) as HTMLInputElement;
+    const showGarmentPoints = document.getElementById(
+      "show-garment-points"
+    ) as HTMLInputElement;
+    const showLandmarkPoints = document.getElementById(
+      "show-landmark-points"
+    ) as HTMLInputElement;
+    const showGarmentLandmarkPoints = document.getElementById(
+      "show-garment-landmark-points"
+    ) as HTMLInputElement;
+
+    [
+      showBodyPoints,
+      showGarmentPoints,
+      showLandmarkPoints,
+      showGarmentLandmarkPoints,
+    ].forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        this.updateFilters();
+      });
+    });
+
+    // Action buttons
+    const measureBtn = document.getElementById(
+      "measure-btn"
+    ) as HTMLButtonElement;
+    const selectBtn = document.getElementById(
+      "select-btn"
+    ) as HTMLButtonElement;
+    const addPointBtn = document.getElementById(
+      "add-point-btn"
+    ) as HTMLButtonElement;
+    const deleteBtn = document.getElementById(
+      "delete-btn"
+    ) as HTMLButtonElement;
+    const saveBtn = document.getElementById("save-btn") as HTMLButtonElement;
+    const repBtn = document.getElementById("rep-btn") as HTMLButtonElement;
+
+    measureBtn.addEventListener("click", () => this.viewer.toggleMeasureMode());
+    selectBtn.addEventListener("click", () => this.viewer.toggleSelectMode());
+    addPointBtn.addEventListener("click", () =>
+      this.viewer.toggleAddPointMode()
+    );
+    deleteBtn.addEventListener("click", () =>
+      this.viewer.deleteSelectedPoints()
+    );
+    saveBtn.addEventListener("click", () => this.saveJSON());
+    repBtn.addEventListener("click", () => this.showRep());
+
+    // Debug buttons
+    setTimeout(() => {
+      const topViewBtn = document.getElementById(
+        "top-view-btn"
+      ) as HTMLButtonElement;
+      const enable3DControlsBtn = document.getElementById(
+        "enable-3d-controls-btn"
+      ) as HTMLButtonElement;
+      const disable3DControlsBtn = document.getElementById(
+        "disable-3d-controls-btn"
+      ) as HTMLButtonElement;
+      const zoomInBtn = document.getElementById(
+        "zoom-in-btn"
+      ) as HTMLButtonElement;
+      const zoomOutBtn = document.getElementById(
+        "zoom-out-btn"
+      ) as HTMLButtonElement;
+      const panLeftBtn = document.getElementById(
+        "pan-left-btn"
+      ) as HTMLButtonElement;
+      const panRightBtn = document.getElementById(
+        "pan-right-btn"
+      ) as HTMLButtonElement;
+      const panUpBtn = document.getElementById(
+        "pan-up-btn"
+      ) as HTMLButtonElement;
+      const panDownBtn = document.getElementById(
+        "pan-down-btn"
+      ) as HTMLButtonElement;
+
+      console.log("Navigation buttons found:", {
+        topViewBtn: !!topViewBtn,
+        enable3DControlsBtn: !!enable3DControlsBtn,
+        disable3DControlsBtn: !!disable3DControlsBtn,
+        zoomInBtn: !!zoomInBtn,
+        zoomOutBtn: !!zoomOutBtn,
+        panLeftBtn: !!panLeftBtn,
+        panRightBtn: !!panRightBtn,
+        panUpBtn: !!panUpBtn,
+        panDownBtn: !!panDownBtn,
+      });
+
+      topViewBtn?.addEventListener("click", () => {
+        console.log("Top View button clicked!");
+        this.viewer.setTopView();
+      });
+      enable3DControlsBtn?.addEventListener("click", () => {
+        console.log("Enable 3D Controls button clicked!");
+        this.viewer.enable3DControls();
+      });
+      disable3DControlsBtn?.addEventListener("click", () => {
+        console.log("Disable 3D Controls button clicked!");
+        this.viewer.disable3DControls();
+      });
+      zoomInBtn?.addEventListener("click", () => {
+        console.log("Zoom In button clicked!");
+        this.viewer.manualZoomIn();
+      });
+      zoomOutBtn?.addEventListener("click", () => {
+        console.log("Zoom Out button clicked!");
+        this.viewer.manualZoomOut();
+      });
+      panLeftBtn?.addEventListener("click", () => {
+        console.log("Pan Left button clicked!");
+        this.viewer.panLeft();
+      });
+      panRightBtn?.addEventListener("click", () => {
+        console.log("Pan Right button clicked!");
+        this.viewer.panRight();
+      });
+      panUpBtn?.addEventListener("click", () => {
+        console.log("Pan Up button clicked!");
+        this.viewer.panUp();
+      });
+      panDownBtn?.addEventListener("click", () => {
+        console.log("Pan Down button clicked!");
+        this.viewer.panDown();
+      });
+    }, 100);
+
+    // 2D Editor buttons
+    const edit2DBtn = document.getElementById(
+      "2d-edit-btn"
+    ) as HTMLButtonElement;
+    const createCurveBtn = document.getElementById(
+      "create-curve-btn"
+    ) as HTMLButtonElement;
+    const generatePointsBtn = document.getElementById(
+      "generate-points-btn"
+    ) as HTMLButtonElement;
+
+    edit2DBtn?.addEventListener("click", () => this.toggle2DEditingMode());
+    createCurveBtn?.addEventListener("click", () => this.createCurve());
+    generatePointsBtn?.addEventListener("click", () => this.generatePoints());
+
+    // 3D Labels toggle button
+    const toggle3DLabelsBtn = document.getElementById(
+      "toggle-3d-labels-btn"
+    ) as HTMLButtonElement;
+    toggle3DLabelsBtn?.addEventListener("click", () =>
+      this.toggle3DLandmarkLabels()
+    );
+
+    // Close 2D editor button
+    const close2DBtn = document.getElementById(
+      "close-2d-editor"
+    ) as HTMLButtonElement;
+    close2DBtn?.addEventListener("click", () => this.toggle2DEditingMode());
+
+    // 2D Editor control buttons
+    const zoomInBtn = document.getElementById("zoom-in") as HTMLButtonElement;
+    const zoomOutBtn = document.getElementById("zoom-out") as HTMLButtonElement;
+    const resetViewBtn = document.getElementById(
+      "reset-view"
+    ) as HTMLButtonElement;
+    const viewAllPointsBtn = document.getElementById(
+      "view-all-points"
+    ) as HTMLButtonElement;
+
+    zoomInBtn?.addEventListener("click", () => this.viewer.zoomIn2D());
+    zoomOutBtn?.addEventListener("click", () => this.viewer.zoomOut2D());
+    resetViewBtn?.addEventListener("click", () => this.viewer.reset2DView());
+    viewAllPointsBtn?.addEventListener("click", () =>
+      this.viewer.viewAllPoints2D()
+    );
+
+    // 2D Editor Selection Mode Controls
+    const selectModeBtn = document.getElementById(
+      "select-mode-btn"
+    ) as HTMLButtonElement;
+    const addPointModeBtn = document.getElementById(
+      "add-point-mode-btn"
+    ) as HTMLButtonElement;
+    const deletePointModeBtn = document.getElementById(
+      "delete-point-mode-btn"
+    ) as HTMLButtonElement;
+
+    selectModeBtn?.addEventListener("click", () => this.set2DSelectionMode());
+    addPointModeBtn?.addEventListener("click", () => this.set2DAddPointMode());
+    deletePointModeBtn?.addEventListener("click", () =>
+      this.set2DDeletePointMode()
+    );
+
+    // 2D Editor Point Locking Controls
+    const lockBodyPoints = document.getElementById(
+      "lock-body-points"
+    ) as HTMLInputElement;
+    const lockGarmentPoints = document.getElementById(
+      "lock-garment-points"
+    ) as HTMLInputElement;
+    const lockLandmarkPoints = document.getElementById(
+      "lock-landmark-points"
+    ) as HTMLInputElement;
+
+    lockBodyPoints?.addEventListener("change", () =>
+      this.togglePointTypeLock("body", lockBodyPoints.checked)
+    );
+    lockGarmentPoints?.addEventListener("change", () =>
+      this.togglePointTypeLock("garment", lockGarmentPoints.checked)
+    );
+    lockLandmarkPoints?.addEventListener("change", () =>
+      this.togglePointTypeLock("landmark", lockLandmarkPoints.checked)
+    );
+
+    // 2D Editor Selection Actions
+    const deleteSelectedBtn = document.getElementById(
+      "delete-selected-btn"
+    ) as HTMLButtonElement;
+    const clearSelectionBtn = document.getElementById(
+      "clear-selection-btn"
+    ) as HTMLButtonElement;
+    const undoSelectionBtn = document.getElementById(
+      "undo-selection-btn"
+    ) as HTMLButtonElement;
+    const redoSelectionBtn = document.getElementById(
+      "redo-selection-btn"
+    ) as HTMLButtonElement;
+
+    deleteSelectedBtn?.addEventListener("click", () =>
+      this.deleteSelectedPoints2D()
+    );
+    clearSelectionBtn?.addEventListener("click", () => this.clearSelection2D());
+    undoSelectionBtn?.addEventListener("click", () => this.undoSelection2D());
+    redoSelectionBtn?.addEventListener("click", () => this.redoSelection2D());
+
+    // 2D Editor Display Options
+    const toggleLabelsBtn = document.getElementById(
+      "toggle-labels-btn"
+    ) as HTMLButtonElement;
+    toggleLabelsBtn?.addEventListener("click", () =>
+      this.toggleLandmarkLabels2D()
+    );
+
+    // Add a test button for force view all points
+    this.addTestForceViewButton();
+
+    // Add debugging methods to window for testing
+    this.addDebugMethods();
+
+    // Window resize
+    window.addEventListener("resize", () => {
+      this.viewer.onWindowResize();
     });
   }
-}
 
-// Render points based on filters
-function renderPoints(): void {
-  pointsGroup.clear();
-  selectedPoints = [];
-  clearMeasurementLine();
-  if (!originalData) return;
-  const selectedLevel = levelFilter.value;
-  filteredPoints = [];
-  originalData.levels.forEach((level) => {
-    if (
-      selectedLevel === "all" ||
-      `${level.source}::${level.name}` === selectedLevel
-    ) {
-      // Show intersectionPoints as 'body' type
-      if (level.intersectionPoints) {
-        level.intersectionPoints.forEach((point) => {
-          filteredPoints.push({
-            type: "body",
-            point: point,
-            level: `${level.name} [${level.source}]`,
-          });
-        });
-      }
-      // Show landmarks as 'landmark' type
-      if (level.landmarks) {
-        level.landmarks.forEach((lm) => {
-          if (lm && lm.point) {
-            filteredPoints.push({
-              type: "landmark",
-              point: lm.point,
-              level: `${level.name} [${level.source}]`,
-            });
-          }
-        });
-      }
-    }
-  });
-
-  const pointGeometry = new THREE.BufferGeometry();
-  const positions: number[] = [];
-  const colors: number[] = [];
-  const colorBody = new THREE.Color(0xff0000);
-  const colorDress = new THREE.Color(0x00ff00);
-  const colorLandmark = new THREE.Color(0x0000ff);
-
-  filteredPoints.forEach((data) => {
-    positions.push(data.point.x, data.point.y, data.point.z);
-    if (data.type === "body") {
-      colors.push(colorBody.r, colorBody.g, colorBody.b);
-    } else if (data.type === "dress") {
-      colors.push(colorDress.r, colorDress.g, colorDress.b);
-    } else if (data.type === "landmark") {
-      colors.push(colorLandmark.r, colorLandmark.g, colorLandmark.b);
-    }
-  });
-
-  pointGeometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(positions, 3)
-  );
-  pointGeometry.setAttribute(
-    "color",
-    new THREE.Float32BufferAttribute(colors, 3)
-  );
-
-  const pointMaterial = new THREE.PointsMaterial({
-    size: 0.05,
-    vertexColors: true,
-    sizeAttenuation: true,
-  });
-
-  const points = new THREE.Points(pointGeometry, pointMaterial);
-  points.userData.originalFilteredPoints = filteredPoints;
-  pointsGroup.add(points);
-
-  updateCameraLockState();
-}
-
-// Handle file upload
-async function handleFileUpload(event: Event): Promise<void> {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (file) {
-    loadingOverlay.classList.remove("hidden");
+  private async loadDefaultJSON(): Promise<void> {
     try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
+      const data = localStorage.getItem("jsonData");
+      const output = document.getElementById("output");
+
+      if (data) {
         try {
-          const data = JSON.parse(e.target?.result as string);
-          loadJsonData(data);
-          showMessage("JSON file loaded successfully!");
-        } catch (parseError: any) {
-          showMessage("Error parsing JSON file: " + parseError.message);
-          console.error("Error parsing JSON:", parseError);
-        } finally {
-          loadingOverlay.classList.add("hidden");
+          const parsed = JSON.parse(data);
+          this.loadJSONData(parsed);
+        } catch (e) {
+          console.error("Error parsing data parameter:", e);
+          this.uiManager.showStatus(
+            "Error parsing data parameter. Please upload a file."
+          );
         }
-      };
-      reader.readAsText(file);
-    } catch (error: any) {
-      showMessage("Error reading file: " + error.message);
-      console.error("Error reading file:", error);
-      loadingOverlay.classList.add("hidden");
-    }
-  }
-}
-
-// Measure Distance Functionality
-function toggleMeasureDistance(): void {
-  measuring = !measuring;
-  if (measuring) {
-    measureDistanceBtn.textContent = "Measuring... Click 2 points";
-    measureDistanceBtn.classList.add("bg-blue-600");
-    showMessage(
-      "Measure Distance Mode: Click two points to measure the distance."
-    );
-    controls.enabled = false;
-  } else {
-    measureDistanceBtn.textContent = "Measure Distance";
-    measureDistanceBtn.classList.remove("bg-blue-600");
-    clearMeasurementLine();
-    firstMeasurementPoint = null;
-    infoBox.textContent = "Distance: N/A";
-  }
-  selecting = false;
-  selectPointsBtn.textContent = "Select Points (Rect)";
-  selectPointsBtn.classList.remove("bg-blue-600");
-  addingPoint = false;
-  addDressPointBtn.textContent = "Add Dress Point";
-  addDressPointBtn.classList.remove("bg-blue-600");
-  renderPoints();
-}
-
-function clearMeasurementLine(): void {
-  if (measurementLine) {
-    scene.remove(measurementLine);
-    measurementLine.geometry.dispose();
-    (measurementLine.material as THREE.Material).dispose();
-    measurementLine = null;
-  }
-}
-
-// Selection Functionality
-function toggleSelectPoints(): void {
-  selecting = !selecting;
-  if (selecting) {
-    selectPointsBtn.textContent = "Selecting... Drag to select";
-    selectPointsBtn.classList.add("bg-blue-600");
-    showMessage(
-      "Select Points Mode: Click and drag to draw a rectangle and select points."
-    );
-    controls.enabled = false;
-  } else {
-    selectPointsBtn.textContent = "Select Points (Rect)";
-    selectPointsBtn.classList.remove("bg-blue-600");
-    clearSelectionRectangle();
-    renderPoints();
-  }
-  measuring = false;
-  measureDistanceBtn.textContent = "Measure Distance";
-  measureDistanceBtn.classList.remove("bg-blue-600");
-  clearMeasurementLine();
-  firstMeasurementPoint = null;
-  infoBox.textContent = "Distance: N/A";
-  addingPoint = false;
-  addDressPointBtn.textContent = "Add Dress Point";
-  addDressPointBtn.classList.remove("bg-blue-600");
-}
-
-function clearSelectionRectangle(): void {
-  if (selectionRectMesh) {
-    scene.remove(selectionRectMesh);
-    selectionRectMesh.geometry.dispose();
-    (selectionRectMesh.material as THREE.Material).dispose();
-    selectionRectMesh = null;
-  }
-}
-
-// Add Dress Point Functionality
-function toggleAddPoint(): void {
-  addingPoint = !addingPoint;
-  if (addingPoint) {
-    addDressPointBtn.textContent = "Adding Dress Point... Click on surface";
-    addDressPointBtn.classList.add("bg-blue-600");
-    showMessage(
-      "Add Dress Point Mode: Click on the 3D surface to add a new dress point to the selected level."
-    );
-    controls.enabled = false;
-  } else {
-    addDressPointBtn.textContent = "Add Dress Point";
-    addDressPointBtn.classList.remove("bg-blue-600");
-    renderPoints();
-  }
-  measuring = false;
-  measureDistanceBtn.textContent = "Measure Distance";
-  measureDistanceBtn.classList.remove("bg-blue-600");
-  clearMeasurementLine();
-  firstMeasurementPoint = null;
-  infoBox.textContent = "Distance: N/A";
-  selecting = false;
-  selectPointsBtn.textContent = "Select Points (Rect)";
-  selectPointsBtn.classList.remove("bg-blue-600");
-  clearSelectionRectangle();
-}
-
-function onPointerDown(event: PointerEvent): void {
-  event.preventDefault();
-  if (event.button !== 0) return;
-
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  if (selecting) {
-    controls.enabled = false;
-    startSelectPoint.set(event.clientX, event.clientY);
-    clearSelectionRectangle();
-    selectionRectMesh = createSelectionRectangle(
-      startSelectPoint,
-      startSelectPoint
-    );
-    scene.add(selectionRectMesh);
-  }
-}
-
-function onPointerMove(event: PointerEvent): void {
-  event.preventDefault();
-  if (selecting && selectionRectMesh) {
-    currentMousePoint.set(event.clientX, event.clientY);
-    updateSelectionRectangle(startSelectPoint, currentMousePoint);
-  }
-}
-
-function onPointerUp(event: PointerEvent): void {
-  event.preventDefault();
-  if (event.button !== 0) return;
-
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  if (measuring) {
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(pointsGroup.children);
-
-    if (intersects.length > 0) {
-      const clickedPoint = intersects[0].point;
-      if (!firstMeasurementPoint) {
-        firstMeasurementPoint = clickedPoint;
-        showMessage("First point selected. Click the second point.");
       } else {
-        const distance = firstMeasurementPoint.distanceTo(clickedPoint);
-        infoBox.textContent = `Distance: ${distance.toFixed(3)}`;
-        clearMeasurementLine();
-        const geometry = new THREE.BufferGeometry().setFromPoints([
-          firstMeasurementPoint,
-          clickedPoint,
-        ]);
-        const material = new THREE.LineBasicMaterial({ color: 0xffff00 });
-        measurementLine = new THREE.Line(geometry, material);
-        scene.add(measurementLine);
-        firstMeasurementPoint = null;
-      }
-    }
-  } else if (selecting) {
-    if (selectionRectMesh) {
-      selectPointsInRectangle();
-      clearSelectionRectangle();
-    }
-    controls.enabled = true;
-  } else if (addingPoint) {
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(pointsGroup.children);
-    if (intersects.length > 0) {
-      const newPointPos = intersects[0].point;
-      addPointToData(newPointPos);
-    } else {
-      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-      const intersectionPoint = new THREE.Vector3();
-      raycaster.ray.intersectPlane(plane, intersectionPoint);
-      if (intersectionPoint) {
-        addPointToData(intersectionPoint);
-      } else {
-        showMessage(
-          "Could not determine a valid position to add a point. Try clicking on existing geometry."
+        this.uiManager.showStatus(
+          "Error parsing data parameter. Please upload a file."
         );
       }
+    } catch (error) {
+      console.error("Error loading default JSON file:", error);
+      this.uiManager.showStatus(
+        "Error loading default JSON file. Please upload a file."
+      );
     }
   }
-}
 
-// Create the selection rectangle mesh
-function createSelectionRectangle(
-  start: THREE.Vector2,
-  end: THREE.Vector2
-): THREE.LineLoop {
-  const material = new THREE.LineBasicMaterial({
-    color: 0x00ffff,
-    transparent: true,
-    opacity: 0.5,
-  });
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(5 * 3);
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setDrawRange(0, 5);
-  const mesh = new THREE.LineLoop(geometry, material);
-  mesh.renderOrder = 999;
-  mesh.material.depthTest = false;
-  return mesh;
-}
+  private async loadJSONFile(file: File): Promise<void> {
+    this.uiManager.showLoading(true);
 
-// Update the selection rectangle mesh based on mouse movement
-function updateSelectionRectangle(
-  start: THREE.Vector2,
-  current: THREE.Vector2
-): void {
-  if (!selectionRectMesh) return;
-  const positions = selectionRectMesh.geometry.attributes.position
-    .array as Float32Array;
-  const minX = Math.min(start.x, current.x);
-  const maxX = Math.max(start.x, current.x);
-  const minY = Math.min(start.y, current.y);
-  const maxY = Math.max(start.y, current.y);
-
-  const ndcStart = new THREE.Vector2(
-    (minX / window.innerWidth) * 2 - 1,
-    -(maxY / window.innerHeight) * 2 + 1
-  );
-  const ndcEnd = new THREE.Vector2(
-    (maxX / window.innerWidth) * 2 - 1,
-    -(minY / window.innerHeight) * 2 + 1
-  );
-
-  const p1 = new THREE.Vector3(ndcStart.x, ndcStart.y, 0.5).unproject(camera);
-  const p2 = new THREE.Vector3(ndcEnd.x, ndcStart.y, 0.5).unproject(camera);
-  const p3 = new THREE.Vector3(ndcEnd.x, ndcEnd.y, 0.5).unproject(camera);
-  const p4 = new THREE.Vector3(ndcStart.x, ndcEnd.y, 0.5).unproject(camera);
-
-  positions[0] = p1.x;
-  positions[1] = p1.y;
-  positions[2] = p1.z;
-  positions[3] = p2.x;
-  positions[4] = p2.y;
-  positions[5] = p2.z;
-  positions[6] = p3.x;
-  positions[7] = p3.y;
-  positions[8] = p3.z;
-  positions[9] = p4.x;
-  positions[10] = p4.y;
-  positions[11] = p4.z;
-  positions[12] = p1.x;
-  positions[13] = p1.y;
-  positions[14] = p1.z;
-
-  selectionRectMesh.geometry.attributes.position.needsUpdate = true;
-}
-
-// Select points within the drawn rectangle
-function selectPointsInRectangle(): void {
-  if (!originalData) return;
-
-  const rectLeft = Math.min(startSelectPoint.x, currentMousePoint.x);
-  const rectRight = Math.max(startSelectPoint.x, currentMousePoint.x);
-  const rectTop = Math.min(startSelectPoint.y, currentMousePoint.y);
-  const rectBottom = Math.max(startSelectPoint.y, currentMousePoint.y);
-
-  selectedPoints = [];
-
-  const currentSelectedLevel = levelFilter.value;
-
-  pointsGroup.children.forEach((pointsMesh) => {
-    if ((pointsMesh as THREE.Points).isPoints) {
-      const points = pointsMesh as THREE.Points;
-      const positions = points.geometry.attributes.position
-        .array as Float32Array;
-      const colors = points.geometry.attributes.color.array as Float32Array;
-      const originalFiltered = points.userData
-        .originalFilteredPoints as FilteredPointData[];
-
-      for (let i = 0; i < positions.length / 3; i++) {
-        const originalDataItem = originalFiltered[i];
-        if (!originalDataItem) {
-          console.error(`Error: originalFiltered[${i}] is undefined.`);
-          continue;
-        }
-
-        if (
-          currentSelectedLevel !== "all" &&
-          originalDataItem.level !== currentSelectedLevel
-        ) {
-          continue;
-        }
-
-        const x = positions[i * 3];
-        const y = positions[i * 3 + 1];
-        const z = positions[i * 3 + 2];
-
-        const point3D = new THREE.Vector3(x, y, z);
-        point3D.project(camera);
-
-        const screenX = ((point3D.x + 1) / 2) * renderer.domElement.clientWidth;
-        const screenY =
-          ((-point3D.y + 1) / 2) * renderer.domElement.clientHeight;
-
-        if (
-          screenX >= rectLeft &&
-          screenX <= rectRight &&
-          screenY >= rectTop &&
-          screenY <= rectBottom
-        ) {
-          selectedPoints.push({
-            geometryIndex: i,
-            pointsMesh: points,
-            originalDataRef: originalDataItem,
-          });
-          colors[i * 3] = 1;
-          colors[i * 3 + 1] = 1;
-          colors[i * 3 + 2] = 0;
-        }
-      }
-      points.geometry.attributes.color.needsUpdate = true;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      this.loadJSONData(data);
+      this.uiManager.showStatus(`Loaded: ${file.name}`);
+    } catch (error) {
+      this.uiManager.showStatus(`Error loading file: ${error}`);
+    } finally {
+      this.uiManager.showLoading(false);
     }
-  });
-  showMessage(`${selectedPoints.length} points selected.`);
-}
-
-// Delete selected points
-function deleteSelectedPoints(): void {
-  if (selectedPoints.length === 0) {
-    showMessage("No points selected to delete.");
-    return;
   }
 
-  const currentSelectedLevel = levelFilter.value;
-  const pointsToDeleteMap = new Map<string, Set<Point>>();
+  private loadJSONData(data: JSONData): void {
+    this.jsonData = data;
+    this.viewer.loadData(data);
+    this.uiManager.populateFilters(data);
 
-  selectedPoints.forEach((selected) => {
-    const originalRef = selected.originalDataRef;
-    if (
-      currentSelectedLevel === "all" ||
-      originalRef.level === currentSelectedLevel
-    ) {
-      const key = `${originalRef.level}-${originalRef.type}`;
-      if (!pointsToDeleteMap.has(key)) {
-        pointsToDeleteMap.set(key, new Set());
-      }
-      pointsToDeleteMap.get(key)!.add(originalRef.point);
+    this.selectFirstLevelAndTrial();
+
+    this.updateFilters();
+    this.uiManager.updatePointCount(this.viewer.getPointCount());
+  }
+
+  private selectFirstLevelAndTrial(): void {
+    if (!this.jsonData) return;
+
+    const levelFilter = document.getElementById(
+      "level-filter"
+    ) as HTMLSelectElement;
+    const trialFilter = document.getElementById(
+      "garment-filter"
+    ) as HTMLSelectElement;
+
+    // Select first specific level and trial (index 1, skipping "all" at index 0)
+    if (levelFilter.options.length > 1) {
+      levelFilter.selectedIndex = 1; // Index 1 is the first specific level
     }
-  });
 
-  if (originalData && originalData.levels) {
-    originalData.levels.forEach((level) => {
-      if (
-        currentSelectedLevel === "all" ||
-        level.name === currentSelectedLevel
-      ) {
-        const pointTypeKeys = [
-          "bodyIntersectionPoints",
-          "dressIntersectionPoints",
-          "landmarkPoints",
-        ] as const;
-        pointTypeKeys.forEach((pointTypeKey) => {
-          const typeName = pointTypeKey
-            .replace("IntersectionPoints", "")
-            .replace("Points", "") as "body" | "dress" | "landmark";
-          const key = `${level.name}-${typeName}`;
-          if (pointsToDeleteMap.has(key) && level[pointTypeKey]) {
-            const pointsToRemove = pointsToDeleteMap.get(key)!;
-            level[pointTypeKey] = level[pointTypeKey]!.filter(
-              (point: Point) => !pointsToRemove.has(point)
-            );
-          }
-        });
-      }
+    if (trialFilter.options.length > 1) {
+      trialFilter.selectedIndex = 1; // Index 1 is the first specific trial
+    }
+
+    console.log("Auto-selected first level and first trial:", {
+      level: levelFilter.value,
+      trial: trialFilter.value,
     });
   }
 
-  showMessage(`${selectedPoints.length} points deleted.`);
-  renderPoints();
-}
+  private updateFilters(): void {
+    if (!this.jsonData) return;
 
-// Add a new point to the data
-function addPointToData(position: THREE.Vector3): void {
-  if (!originalData) {
-    showMessage("No JSON data loaded. Please upload a file first.");
-    return;
+    const levelFilter = document.getElementById(
+      "level-filter"
+    ) as HTMLSelectElement;
+    const trialFilter = document.getElementById(
+      "garment-filter"
+    ) as HTMLSelectElement;
+    const showBodyPoints = (
+      document.getElementById("show-body-points") as HTMLInputElement
+    ).checked;
+    const showGarmentPoints = (
+      document.getElementById("show-garment-points") as HTMLInputElement
+    ).checked;
+    const showLandmarkPoints = (
+      document.getElementById("show-landmark-points") as HTMLInputElement
+    ).checked;
+    const showGarmentLandmarkPoints = (
+      document.getElementById(
+        "show-garment-landmark-points"
+      ) as HTMLInputElement
+    ).checked;
+
+    this.viewer.updateFilters({
+      level: levelFilter.value,
+      trial: trialFilter.value,
+      showBody: showBodyPoints,
+      showGarment: showGarmentPoints,
+      showLandmark: showLandmarkPoints,
+      showGarmentLandmark: showGarmentLandmarkPoints,
+    });
+
+    this.uiManager.updatePointCount(this.viewer.getPointCount());
+
+    // Update trial color legend
+    const legend = this.viewer.getTrialColorLegend();
+    this.uiManager.updateTrialColorLegend(legend);
   }
 
-  const targetLevelName = levelFilter.value;
-  let targetLevel: VisualizedLevel | undefined = undefined;
-  let finalY = position.y;
-
-  if (targetLevelName !== "all") {
-    targetLevel = originalData.levels.find(
-      (level) => `${level.source}::${level.name}` === targetLevelName
-    );
-    if (targetLevel) {
-      let yCoordinates: number[] = [];
-      if (targetLevel.intersectionPoints)
-        yCoordinates.push(
-          ...targetLevel.intersectionPoints.map((p: THREE.Vector3) => p.y)
-        );
-      if (targetLevel.landmarks)
-        yCoordinates.push(...targetLevel.landmarks.map((lm) => lm.point.y));
-
-      if (yCoordinates.length > 0) {
-        let minDistanceY = Infinity;
-        for (const yCoord of yCoordinates) {
-          const distanceY = Math.abs(position.y - yCoord);
-          if (distanceY < minDistanceY) {
-            minDistanceY = distanceY;
-            finalY = yCoord;
-          }
-        }
-        showMessage(
-          `Adding point to level "${
-            targetLevel.name
-          }" at nearest Y: ${finalY.toFixed(2)}.`
-        );
-      } else {
-        showMessage(
-          `Level "${targetLevel.name}" has no existing points. Adding at raycaster Y.`
-        );
-      }
-    } else {
-      showMessage(
-        `Selected level "${targetLevelName}" not found in data. Adding at raycaster Y.`
-      );
-    }
-  } else {
-    if (originalData.levels && originalData.levels.length > 0) {
-      targetLevel = originalData.levels[0];
-      showMessage(
-        `"All Levels" selected. Adding point to first level (${targetLevel.name})'s intersection points at raycaster Y.`
-      );
-    } else {
-      showMessage("No levels found in the loaded JSON data to add a point to.");
+  private saveJSON(): void {
+    if (!this.jsonData) {
+      this.uiManager.showStatus("No data to save");
       return;
     }
+
+    const modifiedData = this.viewer.getModifiedData();
+    const dataStr = JSON.stringify(modifiedData, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${modifiedData.fileName}_modified.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    this.uiManager.showStatus("JSON saved successfully");
   }
-  if (!targetLevel) return;
-  if (!targetLevel.intersectionPoints) {
-    targetLevel.intersectionPoints = [];
-  }
-  targetLevel.intersectionPoints.push(
-    new THREE.Vector3(position.x, finalY, position.z)
-  );
-  renderPoints();
-  showMessage(
-    `Point added to level "${targetLevel.name}" at X:${position.x.toFixed(
-      2
-    )}, Y:${finalY.toFixed(2)}, Z:${position.z.toFixed(2)}`
-  );
-}
+  private showRep(): void {
+    if (!this.jsonData) {
+      this.uiManager.showStatus("No data to save");
+      return;
+    }
 
-// Save the modified JSON
-function saveModifiedJson(): void {
-  if (!originalData) {
-    showMessage("No data to save. Please upload a JSON file first.");
-    return;
-  }
-
-  const modifiedData = JSON.parse(
-    JSON.stringify(originalData)
-  ) as VisualizedData;
-  const originalFileName = modifiedData.fileName || "measurement_data";
-  modifiedData.fileName = `${originalFileName}_modified`;
-
-  const dataStr = JSON.stringify(modifiedData, null, 2);
-  const blob = new Blob([dataStr], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${modifiedData.fileName}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showMessage("Modified JSON saved successfully!");
-}
-
-// Function to set the camera to a top-down view
-function setTopView(): void {
-  if (pointsGroup.children.length === 0) {
-    console.warn("No points loaded to set top view to.");
-    return;
+    const modifiedData = this.viewer.getModifiedData();
+    localStorage.removeItem("jsonData");
+    localStorage.setItem("jsonData", JSON.stringify(modifiedData));
+    window.location.href = "/report";
   }
 
-  const boundingBox = new THREE.Box3().setFromObject(pointsGroup);
-  const center = new THREE.Vector3();
-  boundingBox.getCenter(center);
-  const size = new THREE.Vector3();
-  boundingBox.getSize(size);
+  // 2D Editor Methods
+  private toggle2DEditingMode(): void {
+    console.log("=== 2D EDIT MODE TOGGLE START ===");
 
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const fov = camera.fov * (Math.PI / 180);
-  let cameraDistance = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-  cameraDistance *= 1.5;
+    const levelFilter = document.getElementById(
+      "level-filter"
+    ) as HTMLSelectElement;
+    const trialFilter = document.getElementById(
+      "garment-filter"
+    ) as HTMLSelectElement;
 
-  camera.position.set(center.x, center.y + cameraDistance, center.z);
-  camera.lookAt(center);
+    console.log("UI Elements found:", {
+      levelFilter: !!levelFilter,
+      trialFilter: !!trialFilter,
+    });
 
-  controls.target.copy(center);
-  controls.update();
-  showMessage("Camera set to Top View.");
-}
+    const level = levelFilter?.value;
+    const trial = trialFilter?.value === "all" ? undefined : trialFilter?.value;
 
-// New function to update camera lock state based on level selection
-function updateCameraLockState(): void {
-  const currentSelectedLevel = levelFilter.value;
-  if (currentSelectedLevel !== "all") {
-    setTopView();
-    controls.enabled = false;
-    showMessage(
-      `Camera locked to Top View for level "${currentSelectedLevel}".`
+    console.log("Filter values:", {
+      level: level,
+      trial: trial,
+      levelFilterValue: levelFilter?.value,
+      trialFilterValue: trialFilter?.value,
+    });
+
+    if (level === "all") {
+      console.log(
+        'ERROR: Cannot enter 2D edit mode with "All Levels" selected'
+      );
+      this.uiManager.showStatus(
+        "Please select a specific level for 2D editing"
+      );
+      return;
+    }
+
+    console.log("Calling viewer.toggle2DEditingMode with:", { level, trial });
+    this.viewer.toggle2DEditingMode(level, trial);
+
+    // Update UI state
+    const isEditing = this.viewer.isIn2DEditingMode();
+    console.log("Viewer 2D editing state:", isEditing);
+
+    this.uiManager.update2DEditorState(isEditing, level, trial);
+    console.log("=== 2D EDIT MODE TOGGLE END ===");
+  }
+
+  private createCurve(): void {
+    if (!this.viewer.isIn2DEditingMode()) {
+      this.uiManager.showStatus("Please enter 2D editing mode first");
+      return;
+    }
+
+    const options = this.uiManager.getCurveOptions();
+    this.uiManager.showStatus(`Creating ${options.type} curve...`);
+
+    // This would integrate with the Editor2D to create curves
+    // For now, just show a message
+    this.uiManager.showStatus("Curve creation feature coming soon");
+  }
+
+  private generatePoints(): void {
+    if (!this.viewer.isIn2DEditingMode()) {
+      this.uiManager.showStatus("Please enter 2D editing mode first");
+      return;
+    }
+
+    const options = this.uiManager.getCurveOptions();
+    this.uiManager.showStatus(
+      `Generating points with ${options.spacing}mm spacing...`
     );
-  } else {
-    controls.enabled = true;
-    showMessage("Camera controls enabled.");
+
+    // This would integrate with the Editor2D to generate equidistant points
+    // For now, just show a message
+    this.uiManager.showStatus("Point generation feature coming soon");
+  }
+
+  private addTestForceViewButton(): void {
+    // Add a test button to the 2D editor controls
+    const testBtn = document.createElement("button");
+    testBtn.textContent = "Test View All";
+    testBtn.style.cssText =
+      "background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;";
+    testBtn.addEventListener("click", () => {
+      console.log("=== Test View All Button Clicked ===");
+      this.viewer.testViewAllPoints2D();
+    });
+
+    const controls2D = document.querySelector(".controls-2d");
+    if (controls2D) {
+      controls2D.appendChild(testBtn);
+    } else {
+      console.error("2D controls container not found");
+    }
+  }
+
+  private set2DSelectionMode(): void {
+    if (!this.viewer.isIn2DEditingMode()) {
+      this.uiManager.showStatus("Please enter 2D editing mode first");
+      return;
+    }
+
+    this.viewer.set2DSelectionMode(true);
+    this.uiManager.showStatus(
+      "Selection mode enabled - Click and drag to select points"
+    );
+
+    // Update button states
+    this.update2DModeButtonStates("select");
+  }
+
+  private set2DAddPointMode(): void {
+    if (!this.viewer.isIn2DEditingMode()) {
+      this.uiManager.showStatus("Please enter 2D editing mode first");
+      return;
+    }
+
+    this.viewer.set2DAddPointMode(true);
+    this.uiManager.showStatus(
+      "Add point mode enabled - Click to add new points"
+    );
+
+    // Update button states
+    this.update2DModeButtonStates("add");
+  }
+
+  private set2DDeletePointMode(): void {
+    if (!this.viewer.isIn2DEditingMode()) {
+      this.uiManager.showStatus("Please enter 2D editing mode first");
+      return;
+    }
+
+    this.viewer.set2DDeletePointMode(true);
+    this.uiManager.showStatus(
+      "Delete point mode enabled - Click to delete points"
+    );
+
+    // Update button states
+    this.update2DModeButtonStates("delete");
+  }
+
+  private deleteSelectedPoints2D(): void {
+    if (!this.viewer.isIn2DEditingMode()) {
+      this.uiManager.showStatus("Please enter 2D editing mode first");
+      return;
+    }
+
+    const deletedCount = this.viewer.deleteSelectedPoints2D();
+    this.uiManager.showStatus(`Deleted ${deletedCount} selected points`);
+  }
+
+  private clearSelection2D(): void {
+    if (!this.viewer.isIn2DEditingMode()) {
+      this.uiManager.showStatus("Please enter 2D editing mode first");
+      return;
+    }
+
+    this.viewer.clearSelection2D();
+    this.uiManager.showStatus("Selection cleared");
+  }
+
+  private undoSelection2D(): void {
+    if (!this.viewer.isIn2DEditingMode()) {
+      this.uiManager.showStatus("Please enter 2D editing mode first");
+      return;
+    }
+
+    this.viewer.undoSelection2D();
+    this.uiManager.showStatus("Selection undone");
+  }
+
+  private redoSelection2D(): void {
+    if (!this.viewer.isIn2DEditingMode()) {
+      this.uiManager.showStatus("Please enter 2D editing mode first");
+      return;
+    }
+
+    this.viewer.redoSelection2D();
+    this.uiManager.showStatus("Selection redone");
+  }
+
+  private togglePointTypeLock(type: string, lock: boolean): void {
+    if (lock) {
+      this.viewer.lockPointType2D(type);
+    } else {
+      this.viewer.unlockPointType2D(type);
+    }
+  }
+
+  private toggleLandmarkLabels2D(): void {
+    this.viewer.toggleLandmarkLabels2D();
+    console.log("Toggled landmark labels in 2D editor");
+  }
+
+  private update2DModeButtonStates(activeMode: string): void {
+    const selectBtn = document.getElementById(
+      "select-mode-btn"
+    ) as HTMLButtonElement;
+    const addBtn = document.getElementById(
+      "add-point-mode-btn"
+    ) as HTMLButtonElement;
+    const deleteBtn = document.getElementById(
+      "delete-point-mode-btn"
+    ) as HTMLButtonElement;
+
+    // Reset all button styles
+    [selectBtn, addBtn, deleteBtn].forEach((btn) => {
+      if (btn) {
+        btn.style.background = "rgba(255,255,255,0.2)";
+      }
+    });
+
+    // Highlight active mode
+    switch (activeMode) {
+      case "select":
+        if (selectBtn) selectBtn.style.background = "rgba(0,123,255,0.5)";
+        break;
+      case "add":
+        if (addBtn) addBtn.style.background = "rgba(40,167,69,0.5)";
+        break;
+      case "delete":
+        if (deleteBtn) deleteBtn.style.background = "rgba(220,53,69,0.5)";
+        break;
+    }
+  }
+
+  private addDebugMethods(): void {
+    // Expose debugging methods to window for console testing
+    (window as any).debugViewer = {
+      getControlState: () => this.viewer.getControlState(),
+      enable3DControls: () => this.viewer.enable3DControls(),
+      disable3DControls: () => this.viewer.disable3DControls(),
+      setTopView: () => this.viewer.setTopView(),
+      logControlState: () =>
+        console.log("Control State:", this.viewer.getControlState()),
+      manualZoomIn: () => this.viewer.manualZoomIn(),
+      manualZoomOut: () => this.viewer.manualZoomOut(),
+    };
+
+    // Also add a global test function
+    (window as any).testZoom = () => {
+      console.log("Global testZoom function called");
+      this.viewer.setTopView();
+    };
+
+    console.log("Debug methods added to window.debugViewer");
+    console.log(
+      "Available methods: getControlState(), enable3DControls(), disable3DControls(), setTopView(), logControlState(), manualZoomIn(), manualZoomOut()"
+    );
+    console.log("Or call testZoom() directly from console");
+  }
+
+  private toggle3DLandmarkLabels(): void {
+    this.viewer.toggleLandmarkLabels3D();
+    console.log("Toggled 3D landmark labels");
   }
 }
 
-window.onload = init;
+// Initialize the application when the DOM is loaded
+document.addEventListener("DOMContentLoaded", () => {
+  new App();
+});

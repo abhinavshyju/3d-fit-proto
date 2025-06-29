@@ -391,6 +391,17 @@ function clearFileNameDisplay(fileType: "body" | "landmarks" | "garment") {
         name: item.name,
       });
     }
+    if (
+      masterJson.trails &&
+      Array.isArray(masterJson.trails) &&
+      masterJson.garment
+    ) {
+      masterJson.trails[0] = {
+        trailName: "trail1",
+        levels: masterJson.garment.levels ?? [],
+      };
+    }
+    console.log(masterJson.garment?.levels);
     measure = true;
   });
 
@@ -486,6 +497,12 @@ function initTextInputs() {
 }
 
 window.addEventListener("DOMContentLoaded", initTextInputs);
+(window as any).editJson = () => {
+  if (!measure) return;
+  localStorage.removeItem("jsonData");
+  localStorage.setItem("jsonData", JSON.stringify(masterJson));
+  window.location.href = "/edit";
+};
 (window as any).saveJson = () => {
   console.log(masterJson);
   if (!measure) return;

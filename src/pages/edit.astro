@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D JSON Viewer & Editor</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #1a1a1a;
+        color: #ffffff;
+        overflow: hidden;
+      }
+
+      #app {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+      }
+
+      #canvas-container {
+        width: 100%;
+        height: 100%;
+      }
+
+      #ui-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 100;
+      }
+
+      #bottom-info-bar {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        pointer-events: auto;
+      }
+
+      #info-panel {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        min-width: 200px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      #info-panel div {
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: #e0e0e0;
+      }
+
+      #info-panel div:last-child {
+        margin-bottom: 0;
+      }
+
+      #controls-panel {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        max-width: 800px;
+      }
+
+      #left-controls {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        pointer-events: auto;
+        max-width: 300px;
+      }
+
+      #right-controls {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        pointer-events: auto;
+        max-width: 350px;
+      }
+
+      .control-group {
+        margin-bottom: 0;
+        padding: 16px;
+        background: rgba(0, 0, 0, 0.8);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .control-group label {
+        display: block;
+        margin-bottom: 12px;
+        font-weight: 600;
+        color: #ffffff;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        padding-bottom: 8px;
+      }
+
+      .checkbox-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 0;
+      }
+
+      .checkbox-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #4a9eff;
+        cursor: pointer;
+      }
+
+      .checkbox-item label {
+        font-size: 13px;
+        color: #e0e0e0;
+        cursor: pointer;
+        margin: 0;
+        padding: 0;
+        border: none;
+        text-transform: none;
+        letter-spacing: normal;
+      }
+
+      select,
+      input[type="file"] {
+        padding: 8px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 13px;
+        backdrop-filter: blur(10px);
+        transition: all 0.2s ease;
+      }
+
+      select:hover,
+      input[type="file"]:hover {
+        border-color: rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      select:focus,
+      input[type="file"]:focus {
+        outline: none;
+        border-color: #4a9eff;
+        box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+      }
+
+      select option {
+        background: #2a2a2a;
+        color: white;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .btn-primary,
+      .btn-secondary,
+      .btn-danger {
+        padding: 8px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        backdrop-filter: blur(10px);
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #4a9eff, #3a7bd5);
+        border-color: rgba(74, 158, 255, 0.3);
+        box-shadow: 0 2px 8px rgba(74, 158, 255, 0.2);
+      }
+
+      .btn-primary:hover {
+        background: linear-gradient(135deg, #5aa9ff, #4a8be5);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(74, 158, 255, 0.3);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .btn-danger {
+        background: linear-gradient(135deg, #ff4757, #e63946);
+        border-color: rgba(255, 71, 87, 0.3);
+        box-shadow: 0 2px 8px rgba(255, 71, 87, 0.2);
+      }
+
+      .btn-danger:hover {
+        background: linear-gradient(135deg, #ff5a6a, #f04a5a);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+      }
+
+      .btn-primary:active,
+      .btn-secondary:active,
+      .btn-danger:active {
+        transform: translateY(0);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      #curve-options {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 10px;
+        border-radius: 6px;
+        margin-top: 8px;
+      }
+
+      #curve-options label {
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+
+      #curve-options input[type="number"] {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+
+      #curve-options select {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+
+      .btn-secondary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .btn-secondary:disabled:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      #status-bar {
+        background: rgba(0, 0, 0, 0.8);
+        padding: 12px 20px;
+        border-radius: 8px;
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        font-size: 14px;
+        color: #e0e0e0;
+        max-width: 400px;
+        flex-shrink: 0;
+      }
+
+      .loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        padding: 20px 30px;
+        border-radius: 8px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        pointer-events: auto;
+        z-index: 1000;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      /* 2D Editor Canvas Cursor Styling */
+      #2d-editor-container canvas {
+        cursor: crosshair;
+        cursor: -webkit-crosshair;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="canvas-container">
+        <!-- 3D viewer will be rendered here -->
+      </div>
+
+      <!-- Separate 2D Editor Container -->
+      <div
+        id="2d-editor-container"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000;"
+      >
+        <div style="position: absolute; top: 20px; right: 20px; z-index: 2001;">
+          <button
+            id="toggle-2d-mode"
+            class="hidden"
+            style="background: #4a9eff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin-right: 10px;"
+            >Panel Mode</button
+          >
+          <button
+            id="close-2d-editor"
+            style="background: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;"
+            >Close 2D Editor</button
+          >
+        </div>
+        <div
+          class="controls-2d"
+          style="position: absolute; top: 20px; left: 20px; z-index: 2001; display: flex; gap: 5px; flex-direction: column;"
+        >
+          <!-- Zoom and View Controls -->
+          <div style="display: flex; gap: 5px;">
+            <button
+              id="zoom-in"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >+</button
+            >
+            <button
+              id="zoom-out"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >-</button
+            >
+            <button
+              id="reset-view"
+              class="hidden"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >Reset</button
+            >
+            <button
+              id="view-all-points"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >View All</button
+            >
+          </div>
+
+          <!-- Selection Mode Controls -->
+          <div style="display: flex; gap: 5px;">
+            <button
+              id="select-mode-btn"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >Select</button
+            >
+            <button
+              id="add-point-mode-btn"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >Add Point</button
+            >
+            <button
+              id="delete-point-mode-btn"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >Delete</button
+            >
+          </div>
+
+          <!-- Point Locking Controls -->
+          <div
+            style="background: rgba(0,0,0,0.7); padding: 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2);"
+          >
+            <div
+              style="color: white; font-size: 12px; margin-bottom: 8px; font-weight: bold;"
+            >
+              Lock Point Types
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+              <label style="color: white; font-size: 11px; cursor: pointer;">
+                <input
+                  type="checkbox"
+                  id="lock-body-points"
+                  style="margin-right: 5px;"
+                />
+                Lock Body Points
+              </label>
+              <label style="color: white; font-size: 11px; cursor: pointer;">
+                <input
+                  type="checkbox"
+                  id="lock-garment-points"
+                  style="margin-right: 5px;"
+                />
+                Lock Garment Points
+              </label>
+              <label style="color: white; font-size: 11px; cursor: pointer;">
+                <input
+                  type="checkbox"
+                  id="lock-landmark-points"
+                  style="margin-right: 5px;"
+                />
+                Lock Landmark Points
+              </label>
+            </div>
+          </div>
+
+          <!-- Selection Actions -->
+          <div style="display: flex; gap: 5px;">
+            <button
+              id="delete-selected-btn"
+              style="background: rgba(255,0,0,0.3); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >Delete Selected</button
+            >
+            <button
+              id="clear-selection-btn"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >Clear Selection</button
+            >
+          </div>
+
+          <!-- Selection History -->
+          <div style="display: flex; gap: 5px;">
+            <button
+              id="undo-selection-btn"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >Undo</button
+            >
+            <button
+              id="redo-selection-btn"
+              style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >Redo</button
+            >
+          </div>
+
+          <!-- Display Options -->
+          <div style="display: flex; gap: 5px;">
+            <button
+              id="toggle-labels-btn"
+              style="background: rgba(0,255,255,0.3); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;"
+              >Toggle Labels</button
+            >
+          </div>
+        </div>
+        <!-- Cursor Coordinates Display -->
+        <div
+          id="cursor-coordinates"
+          style="position: absolute; bottom: 20px; left: 20px; z-index: 2001; background: rgba(0,0,0,0.8); color: white; padding: 10px 15px; border-radius: 5px; font-family: monospace; font-size: 14px; border: 1px solid rgba(255,255,255,0.2);"
+        >
+          Cursor: (0.000, 0.000) | Scale: 1.00x
+        </div>
+      </div>
+
+      <div id="ui-overlay">
+        <!-- Left Side Controls -->
+        <div id="left-controls">
+          <div class="control-group hidden">
+            <label for="file-input">Load JSON File</label>
+            <input type="file" id="file-input" accept=".json" />
+          </div>
+
+          <div class="control-group">
+            <label>Trial Filter</label>
+            <select id="garment-filter">
+              <option value="all">All Trials</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label for="level-filter">Level Filter</label>
+            <select id="level-filter">
+              <option value="all">All Levels</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label>Point Types</label>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <input type="checkbox" id="show-body-points" checked />
+                <label for="show-body-points">Body Intersection</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="show-garment-points" checked />
+                <label for="show-garment-points">Garment Intersection</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="show-landmark-points" checked />
+                <label for="show-landmark-points">Body Landmark</label>
+              </div>
+              <div class="checkbox-item">
+                <input
+                  type="checkbox"
+                  id="show-garment-landmark-points"
+                  checked
+                />
+                <label for="show-garment-landmark-points"
+                  >Garment Landmark</label
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side Controls -->
+        <div id="right-controls">
+          <div class="control-group">
+            <label>Actions</label>
+            <div class="button-group">
+              <button id="measure-btn" class="btn-secondary">Measure</button>
+              <button id="select-btn" class="btn-secondary">Select</button>
+              <button id="add-point-btn" class="btn-primary">Add Point</button>
+              <button id="delete-btn" class="btn-danger">Delete</button>
+              <button id="save-btn" class="btn-primary">Save</button>
+              <button id="rep-btn" class="btn-primary">Report</button>
+              <button id="2d-edit-btn" class="btn-secondary">2D Editor</button>
+              <button
+                id="toggle-3d-labels-btn"
+                class="btn-secondary"
+                style="background: rgba(0,255,255,0.3);">3D Labels</button
+              >
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label>Navigation</label>
+            <div class="button-group">
+              <button id="top-view-btn" class="btn-secondary">Top View</button>
+              <button id="enable-3d-controls-btn" class="btn-secondary"
+                >Enable 3D</button
+              >
+              <button id="disable-3d-controls-btn" class="btn-secondary"
+                >Disable 3D</button
+              >
+            </div>
+
+            <!-- Zoom Controls -->
+            <div class="button-group" style="margin-top: 12px;">
+              <div style="display: flex; gap: 4px; justify-content: center;">
+                <button
+                  id="zoom-out-btn"
+                  class="btn-secondary"
+                  style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold;"
+                  >−</button
+                >
+                <button
+                  id="zoom-in-btn"
+                  class="btn-secondary"
+                  style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold;"
+                  >+</button
+                >
+              </div>
+            </div>
+
+            <!-- Pan Controls -->
+            <div class="button-group" style="margin-top: 12px;">
+              <div
+                style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; max-width: 120px; margin: 0 auto;"
+              >
+                <!-- Top row -->
+                <div></div>
+                <button
+                  id="pan-up-btn"
+                  class="btn-secondary"
+                  style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold;"
+                  >↑</button
+                >
+                <div></div>
+
+                <!-- Middle row -->
+                <button
+                  id="pan-left-btn"
+                  class="btn-secondary"
+                  style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold;"
+                  >←</button
+                >
+                <div
+                  style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); border-radius: 4px;"
+                >
+                  Z
+                </div>
+                <button
+                  id="pan-right-btn"
+                  class="btn-secondary"
+                  style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold;"
+                  >→</button
+                >
+
+                <!-- Bottom row -->
+                <div></div>
+                <button
+                  id="pan-down-btn"
+                  class="btn-secondary"
+                  style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold;"
+                  >↓</button
+                >
+                <div></div>
+              </div>
+            </div>
+
+            <!-- Axis Labels -->
+            <div
+              style="margin-top: 8px; text-align: center; font-size: 11px; color: rgba(255,255,255,0.7);"
+            >
+              <div>X: Left/Right | Z: Forward/Back</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Info Bar -->
+        <div id="bottom-info-bar">
+          <div id="info-panel">
+            <div>Points: <span id="point-count">0</span></div>
+            <div
+              id="measurement-info"
+              style="display: none; margin-top: 8px; padding: 8px; background: rgba(0,255,0,0.1); border-radius: 4px; border: 1px solid rgba(0,255,0,0.3);"
+            >
+              <div
+                style="font-weight: bold; color: #00ff00; margin-bottom: 4px;"
+              >
+                📏 Measurements
+              </div>
+              <div
+                id="distance-info"
+                style="font-family: monospace; font-size: 12px; color: #00ff00;"
+              >
+              </div>
+            </div>
+          </div>
+
+          <div id="status-bar">
+            <span id="status-text">Ready to load JSON file</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="loading" class="loading hidden">Loading JSON file...</div>
+    </div>
+
+    <script src="../scripts/edit/index.ts"></script>
+  </body>
+</html>

@@ -1,98 +1,116 @@
 ---
 import { Download, Printer } from "lucide-react";
-import LevelReport from "./level-report.astro";
+import Layout from "@/layouts/main.astro";
 ---
 
-<div class="w-full bg-white z-[200] max-w-[794px]">
-  <div class="">
-    <h1
-      class="mb-8 text-center text-3xl font-bold text-gray-800 print:text-2xl"
-    >
-      FIT REPORT
-    </h1>
-
-    <div class="mb-6 flex justify-center gap-4 print:hidden">
-      <button
-        onclick="window.print()"
-        class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+<Layout>
+  <div class="w-full bg-white z-[200] max-w-[794px]">
+    <div class="">
+      <h1
+        class="mb-8 text-center text-3xl font-bold text-gray-800 print:text-2xl"
       >
-        <Printer className="h-4 w-4" />
-        Print Report
-      </button>
-      <button
-        onclick="downloadPDF()"
-        class="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-      >
-        <Download className="h-4 w-4" />
-        Download PDF
-      </button>
-    </div>
+        FIT REPORT
+      </h1>
 
-    <div class="fit-report-content">
-      <div class="space-y-8 py-4">
-        <div class="mb-6">
-          <div class="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <div class="font-semibold text-gray-700 mb-1" id="buyer">
-                BUYER:
-              </div>
-              <div class="font-semibold text-gray-700 mb-1" id="style">
-                STYLE #:
-              </div>
-              <div class="font-semibold text-gray-700 mb-1">DESCRIPTION:</div>
-            </div>
-            <div>
-              <div class="font-semibold text-gray-700 mb-1">FIT:</div>
-              <div class="font-semibold text-gray-700 mb-1">DATE:</div>
-              <div class="font-semibold text-gray-700 mb-1">FABRIC:</div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8 print:grid-cols-4 gap-2 print:h-[723px]"
+      <div class="mb-6 flex justify-center gap-4 print:hidden">
+        <button
+          onclick="window.print()"
+          class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <div class="bg-gray-100 p-2">
-            <div class="text-center uppercase font-semibold mb-2 text-gray-700">
-              BODY
-            </div>
-            <div id="rBodyViewPort" class="h-[300px] w-full bg-white rounded">
-            </div>
-          </div>
-          <div class="bg-gray-100 p-2">
-            <div class="text-center uppercase font-semibold mb-2 text-gray-700">
-              Type 1
-            </div>
-            <div id="rTOneViewPort" class="h-[300px] w-full bg-white rounded">
-            </div>
-          </div>
-          <div class="bg-gray-100 p-2">
-            <div class="text-center uppercase font-semibold mb-2 text-gray-700">
-              Type 2
-            </div>
-            <div id="rTTwoViewPort" class="h-[300px] w-full bg-white rounded">
-            </div>
-          </div>
-          <div class="bg-gray-100 p-2">
-            <div class="text-center uppercase font-semibold mb-2 text-gray-700">
-              Type 3
-            </div>
-            <div id="rTThreeViewPort" class="h-[300px] w-full bg-white rounded">
-            </div>
-          </div>
-        </div>
+          <Printer className="h-4 w-4" />
+          Print Report
+        </button>
+        <button
+          onclick="downloadPDF()"
+          class="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <Download className="h-4 w-4" />
+          Download PDF
+        </button>
+      </div>
 
-        <div id="reportSectionContainer" class="space-y-12"></div>
+      <div class="fit-report-content">
+        <div class="space-y-8 py-4">
+          <div class="mb-6">
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <div class="font-semibold text-gray-700 mb-1">
+                  BUYER:
+                  <span class="print:inline hidden" id="buyer-value"></span>
+                  <input
+                    type="text"
+                    id="buyer-input"
+                    class="border border-gray-300 rounded px-2 py-1 print:hidden"
+                    placeholder="Enter buyer"
+                  />
+                </div>
+                <div class="font-semibold text-gray-700 mb-1">
+                  STYLE #:
+                  <span class="print:inline hidden" id="style-value"></span>
+                  <input
+                    type="text"
+                    id="style-input"
+                    class="border border-gray-300 rounded px-2 py-1 print:hidden"
+                    placeholder="Enter style #"
+                  />
+                </div>
+                <div class="font-semibold text-gray-700 mb-1">
+                  DESCRIPTION:
+                  <span class="print:inline hidden" id="description-value"
+                  ></span>
+                  <input
+                    type="text"
+                    id="description-input"
+                    class="border border-gray-300 rounded px-2 py-1 print:hidden"
+                    placeholder="Enter description"
+                  />
+                </div>
+              </div>
+              <div>
+                <div class="font-semibold text-gray-700 mb-1">
+                  FIT:
+                  <span class="print:inline hidden" id="fit-value"></span>
+                  <input
+                    type="text"
+                    id="fit-input"
+                    class="border border-gray-300 rounded px-2 py-1 print:hidden"
+                    placeholder="Enter fit"
+                  />
+                </div>
+                <div class="font-semibold text-gray-700 mb-1">
+                  DATE:
+                  <span class="print:inline hidden" id="date-value"></span>
+                  <input
+                    type="date"
+                    id="date-input"
+                    class="border border-gray-300 rounded px-2 py-1 print:hidden"
+                    placeholder="Enter date"
+                  />
+                </div>
+                <div class="font-semibold text-gray-700 mb-1">
+                  FABRIC:
+                  <span class="print:inline hidden" id="fabric-value"></span>
+                  <input
+                    type="text"
+                    id="fabric-input"
+                    class="border border-gray-300 rounded px-2 py-1 print:hidden"
+                    placeholder="Enter fabric"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="reportSectionContainer" class="space-y-12"></div>
+        </div>
       </div>
     </div>
   </div>
-</div>
+</Layout>
 
-<script src="../scripts/fit-analyzer/index.ts"></script>
+<!-- <script src="../scripts/fit-analyzer/index.ts"></script> -->
 <script>
-  import { finalJsonStore } from "@/scripts/storage";
   import { rotatePoints180 } from "@/scripts/utils";
-  import { Chart } from "chart.js";
   import * as THREE from "three";
   import type {
     MasterJson,
@@ -102,6 +120,26 @@ import LevelReport from "./level-report.astro";
     Landmark,
     ValueLandmark,
   } from "@/scripts/type";
+  import {
+    Chart,
+    Legend,
+    LinearScale,
+    LineElement,
+    PointElement,
+    ScatterController,
+    Title,
+    Tooltip,
+  } from "chart.js";
+
+  Chart.register(
+    ScatterController,
+    PointElement,
+    LineElement,
+    LinearScale,
+    Title,
+    Tooltip,
+    Legend
+  );
 
   interface ChartDataPoint {
     x: number;
@@ -529,18 +567,17 @@ import LevelReport from "./level-report.astro";
     }
   }
 
-  (window as any).report = (): void => {
-    if (loaded) {
-      console.log("Report already loaded");
-      return;
-    }
-
-    const test = finalJsonStore.get();
-    console.log({ "test one": test });
-    if (!isNotNull(test)) {
+  document.addEventListener("DOMContentLoaded", (): void => {
+    const data = localStorage.getItem("jsonData");
+    if (!data) return;
+    const parsed = JSON.parse(data);
+    console.log({ "test one": parsed });
+    if (!isNotNull(parsed)) {
       console.warn("No test data available");
       return;
     }
+
+    const test: MasterJson = parsed;
 
     const reportSectionContainer = document.getElementById(
       "reportSectionContainer"
@@ -826,155 +863,40 @@ import LevelReport from "./level-report.astro";
 
     loaded = true;
     console.log("Report generated successfully");
-  };
 
-  (window as any).generateAIAnalysis = async (): Promise<void> => {
-    const test = finalJsonStore.get();
-    if (!isNotNull(test)) {
-      console.warn("No test data available for AI analysis");
-      return;
-    }
-
-    const button = document.getElementById(
-      "aiAnalysisBtn"
-    ) as HTMLButtonElement;
-    const loadingDiv = document.getElementById("aiAnalysisLoading");
-    const resultDiv = document.getElementById("aiAnalysisResult");
-    const contentDiv = document.getElementById("aiAnalysisContent");
-
-    if (!button || !loadingDiv || !resultDiv || !contentDiv) {
-      console.error("Required elements not found for AI analysis");
-      return;
-    }
-
-    // Show loading state
-    button.disabled = true;
-    button.innerHTML = `
-      <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-      Analyzing...
-    `;
-    loadingDiv.classList.remove("hidden");
-    resultDiv.classList.add("hidden");
-
-    try {
-      // Prepare the data for AI analysis
-      const analysisData = {
-        testData: test,
-        summary: {
-          passCount: totalPass,
-          failCount: totalFail,
-          passPercent: ((totalPass / (totalPass + totalFail)) * 100).toFixed(1),
-          failPercent: ((totalFail / (totalPass + totalFail)) * 100).toFixed(1),
-          top5Variation: allVariations
-            .sort((a, b) => b.difference - a.difference)
-            .slice(0, 5),
-          totalChecks: totalPass + totalFail,
-          bodyLevels: safeArray(test.bodyLevels).filter(
-            (level) => typeof level === "string"
-          ),
-          landmarks: safeArray(test.landmarks).filter(
-            (landmark) => typeof landmark === "string"
-          ),
-          trails: safeArray(test.trails).length,
-          tolerance: safeNumber(test.tolerance, 5),
-        },
-      };
-
-      // Create the prompt for Gemini AI
-      const prompt = `You are a professional garment fit analyst. Analyze the following fit test data and provide a comprehensive summary with actionable recommendations.
-
-Test Data Summary:
-- Pass Rate: ${analysisData.summary.passPercent}%
-- Total Measurements: ${analysisData.summary.totalChecks}
-- Body Levels Analyzed: ${analysisData.summary.bodyLevels.join(", ")}
-- Landmarks Measured: ${analysisData.summary.landmarks.length}
-- Number of Trails: ${analysisData.summary.trails}
-- Tolerance: ±${analysisData.summary.tolerance}%
-
-Top 5 Variations by Difference:
-${analysisData.summary.top5Variation.map((item, idx) => `${idx + 1}. ${item.landmark}: ${item.difference.toFixed(1)}mm`).join("\n")}
-
-Please provide:
-1. Overall fit assessment
-2. Key areas of concern
-3. Specific recommendations for improvement
-4. Priority areas for adjustment
-5. General fit quality rating (1-10)
-
-Format your response in clear sections with actionable insights.`;
-
-      // Call Gemini AI API (you'll need to replace with your actual API key and endpoint)
-      const response = await fetch("/api/gemini-analysis", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          data: analysisData,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
+    // Handle input fields for report meta
+    const metaFields = [
+      { key: "buyer", input: "buyer-input", value: "buyer-value" },
+      { key: "style", input: "style-input", value: "style-value" },
+      {
+        key: "description",
+        input: "description-input",
+        value: "description-value",
+      },
+      { key: "fit", input: "fit-input", value: "fit-value" },
+      { key: "date", input: "date-input", value: "date-value" },
+      { key: "fabric", input: "fabric-input", value: "fabric-value" },
+    ];
+    metaFields.forEach(({ key, input, value }) => {
+      const inputEl = document.getElementById(input) as HTMLInputElement | null;
+      const valueEl = document.getElementById(value);
+      // Load from localStorage if available
+      const saved = localStorage.getItem(`report-meta-${key}`);
+      if (inputEl && saved) {
+        inputEl.value = saved;
+        if (valueEl) valueEl.textContent = saved;
       }
-
-      const result = await response.json();
-
-      // Display the AI analysis
-      contentDiv.innerHTML = `
-        <div class="space-y-4">
-          <div class="border-l-4 border-purple-500 pl-4">
-            <h4 class="font-semibold text-gray-800 mb-2">Overall Assessment</h4>
-            <p class="text-gray-700">${result.assessment || "Analysis completed successfully."}</p>
-          </div>
-          
-          <div class="border-l-4 border-orange-500 pl-4">
-            <h4 class="font-semibold text-gray-800 mb-2">Key Areas of Concern</h4>
-            <p class="text-gray-700">${result.concerns || "No major concerns identified."}</p>
-          </div>
-          
-          <div class="border-l-4 border-green-500 pl-4">
-            <h4 class="font-semibold text-gray-800 mb-2">Recommendations</h4>
-            <p class="text-gray-700">${result.recommendations || "Standard fit recommendations apply."}</p>
-          </div>
-          
-          <div class="bg-gray-50 p-3 rounded-lg">
-            <div class="flex items-center justify-between">
-              <span class="font-medium text-gray-700">Fit Quality Rating:</span>
-              <span class="text-2xl font-bold text-purple-600">${result.rating || "N/A"}/10</span>
-            </div>
-          </div>
-        </div>
-      `;
-    } catch (error) {
-      console.error("AI analysis failed:", error);
-      contentDiv.innerHTML = `
-        <div class="text-red-600 p-4 bg-red-50 rounded-lg border border-red-200">
-          <div class="flex items-center gap-2 mb-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <span class="font-medium">Analysis Failed</span>
-          </div>
-          <p class="text-sm">Unable to generate AI analysis. Please try again later or contact support.</p>
-        </div>
-      `;
-    } finally {
-      // Hide loading and show result
-      loadingDiv.classList.add("hidden");
-      resultDiv.classList.remove("hidden");
-
-      // Reset button
-      button.disabled = false;
-      button.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-        </svg>
-        Regenerate AI Analysis
-      `;
-    }
-  };
+      // Update value span on input
+      if (inputEl && valueEl) {
+        inputEl.addEventListener("input", () => {
+          valueEl.textContent = inputEl.value;
+          localStorage.setItem(`report-meta-${key}`, inputEl.value);
+        });
+        // Set initial value span
+        valueEl.textContent = inputEl.value;
+      }
+    });
+  });
 
   (window as any).downloadPDF = (): void => {
     console.log("PDF download functionality not implemented");

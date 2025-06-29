@@ -129,30 +129,30 @@ const tOneSceneT = new ThreeScene("tOneViewPort");
 const tTwoSceneT = new ThreeScene("tTwoViewPort");
 const tThreeSceneT = new ThreeScene("tThreeViewPort");
 
-const rBodyViewPort = new ThreeScene("rBodyViewPort");
-const rTOneViewPort = new ThreeScene("rTOneViewPort");
-const rTTwoViewPort = new ThreeScene("rTTwoViewPort");
-const rTThreeViewPort = new ThreeScene("rTThreeViewPort");
+// const rBodyViewPort = new ThreeScene("rBodyViewPort");
+// const rTOneViewPort = new ThreeScene("rTOneViewPort");
+// const rTTwoViewPort = new ThreeScene("rTTwoViewPort");
+// const rTThreeViewPort = new ThreeScene("rTThreeViewPort");
 
 let bodyModel: THREE.Object3D | null;
 const trialMap: Record<
   string,
-  { model: THREE.Object3D | null; scene: THREE.Scene; sceneTwo: THREE.Scene }
+  { model: THREE.Object3D | null; scene: THREE.Scene }
 > = {
   trial1: {
     model: null,
     scene: tOneSceneT.getScene(),
-    sceneTwo: rTOneViewPort.getScene(),
+    // sceneTwo: rTOneViewPort.getScene(),
   },
   trial2: {
     model: null,
     scene: tTwoSceneT.getScene(),
-    sceneTwo: rTTwoViewPort.getScene(),
+    // sceneTwo: rTTwoViewPort.getScene(),
   },
   trial3: {
     model: null,
     scene: tThreeSceneT.getScene(),
-    sceneTwo: rTThreeViewPort.getScene(),
+    // sceneTwo: rTThreeViewPort.getScene(),
   },
 };
 const tempModel = [];
@@ -164,7 +164,7 @@ function handleModelUpload(
   loadModel(event, scene, type, (model, _fileName) => {
     if (type === "body") {
       bodyModel = model;
-      rBodyViewPort.getScene().add(model.clone(true));
+      // rBodyViewPort.getScene().add(model.clone(true));
       tempModel.push({
         name: "body",
         body: true,
@@ -172,7 +172,7 @@ function handleModelUpload(
       });
     } else {
       trialMap[type].model = model;
-      trialMap[type].sceneTwo.add(model.clone(true));
+      // trialMap[type].sceneTwo.add(model.clone(true));
       tempModel.push({
         body: false,
         name: type,
@@ -339,8 +339,29 @@ window.uploadFit = async (event: Event) => {
   }
 };
 
+(window as any).editJson = () => {
+  if (!finalJson.fileName) {
+    console.error("No filename available for saving");
+    return;
+  }
+
+  localStorage.removeItem("jsonData");
+  localStorage.setItem("jsonData", JSON.stringify(finalJson));
+  window.location.href = "/edit";
+};
+// Report functionality
+(window as any).report = () => {
+  if (!finalJson.fileName) {
+    console.error("No filename available for saving");
+    return;
+  }
+
+  localStorage.removeItem("jsonData");
+  localStorage.setItem("jsonData", JSON.stringify(finalJson));
+  window.location.href = "/report";
+};
 (window as any).saveBodyJson = () => {
-  console.log(finalJson);
+  // console.log(finalJson);
   if (!finalJson.fileName) {
     console.error("No filename available for saving");
     return;
