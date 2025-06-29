@@ -391,6 +391,10 @@ function clearFileNameDisplay(fileType: "body" | "landmarks" | "garment") {
         name: item.name,
       });
     }
+    // Ensure trails is an array before assigning
+    if (!Array.isArray(masterJson.trails)) {
+      masterJson.trails = [];
+    }
     if (
       masterJson.trails &&
       Array.isArray(masterJson.trails) &&
