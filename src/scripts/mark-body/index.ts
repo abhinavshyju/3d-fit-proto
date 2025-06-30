@@ -455,7 +455,7 @@ class EventHandlers {
       const unitMeasurementInput = document.getElementById(
         "unitMeasurementInput"
       ) as HTMLInputElement;
-      unitMeasurementInput.value = (distance * 100).toString();
+      unitMeasurementInput.value = (distance * 100).toFixed(2).toString();
       value = distance * 100;
       state.tempPoints.forEach((point) => scene.remove(point));
       state.reset();

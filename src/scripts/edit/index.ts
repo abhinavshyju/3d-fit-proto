@@ -1,6 +1,7 @@
 import { JSONViewer } from "./JSONViewer";
 import { UIManager } from "./UIManager";
-import type { JSONData } from "./types";
+import type { JSONData, Landmark, LevelData, Trail } from "./types";
+import * as THREE from "three";
 
 class App {
   private viewer: JSONViewer;
@@ -434,7 +435,38 @@ class App {
       this.uiManager.showStatus("No data to save");
       return;
     }
-
+    const trials: Trail[] = [];
+    for (let index = 0; index < this.jsonData.trails.length; index++) {
+      const levelsDatas: LevelData[] = [];
+      this.jsonData.body.levels.map((i) => {
+        const garmentIntersectionPoints = this.jsonData?.trails[
+          index
+        ].levels.find((j) => j.name === i.name);
+        i.landmarks?.forEach((point) => {
+          if (!point || !point.point || !point.name) return;
+          let minDistance = Infinity;
+          let nearestPoint: THREE.Vector3 | null = null;
+          if (!garmentIntersectionPoints) return;
+          garmentIntersectionPoints.forEach((obj) => {
+            const distance = obj.distanceTo(point.point!);
+            if (distance < minDistance) {
+              minDistance = distance;
+              nearestPoint = obj.clone();
+            }
+          });
+          if (!nearestPoint) return;
+          const landmarksData: Landmark = {
+            name: point.name,
+            point: nearestPoint,
+            distance: minDistance,
+          };
+        });
+      });
+      const trialsData: Trail = {
+        trailName: this.jsonData?.trails[index].trailName,
+        levels: levelsDatas,
+      };
+    }
     const modifiedData = this.viewer.getModifiedData();
     const dataStr = JSON.stringify(modifiedData, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });

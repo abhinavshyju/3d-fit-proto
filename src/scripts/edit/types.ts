@@ -14,6 +14,7 @@ export interface Point2D {
 export interface Landmark {
   point: Point3D;
   name?: string;
+  distance?: number;
 }
 
 export interface Point {
@@ -41,6 +42,7 @@ export interface Curve {
 }
 
 export interface LevelData {
+  forEach(arg0: (obj: any) => void): unknown;
   name: string;
   intersectionPoints?: Point3D[];
   landmarks?: Landmark[];
